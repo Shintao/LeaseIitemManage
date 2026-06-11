@@ -9,6 +9,7 @@
     html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f4f6f9; color: #333; }
     .app-container { display: flex; flex-direction: column; height: 100%; max-width: 440px; margin: 0 auto; padding: 10px; box-sizing: border-box; }
     h2 { margin: 2px 0 8px 0; color: #2c3e50; font-size: 18px; text-align: center; }
+    
     .mode-container { display: flex; gap: 6px; margin-bottom: 8px; }
     .mode-container input { display: none; }
     .mode-container label { flex: 1; text-align: center; padding: 10px 2px; font-size: 12px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 6px; background-color: #fff; transition: all 0.2s; }
@@ -16,14 +17,24 @@
     input[value="生徒から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
+    
     #video-container { position: relative; width: 100%; flex: 1; min-height: 150px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; background-color: #000; }
     video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    
     #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; font-size:16px; font-weight:bold; transition: all 0.3s; z-index: 2; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.2); color: transparent; border: 4px solid #3498db; box-sizing: border-box; }
+    #scan-overlay.active.rent-mode { border-color: #3498db; background: rgba(52, 152, 219, 0.2); }
+    #scan-overlay.active.rent-device-mode { border-color: #e67e22; background: rgba(230, 126, 34, 0.2); }
     #scan-overlay.active.return-mode { border-color: #2ecc71; background: rgba(46, 204, 113, 0.2); }
     #scan-overlay.active.admin-add { border-color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
     #scan-overlay.active.admin-del { border-color: #e67e22; background: rgba(230, 126, 34, 0.2); }
-    #action-btn { width: 100%; margin: 8px 0; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: block; }
+
+    /* ボタンエリアの配置用 */
+    .btn-group { display: flex; gap: 8px; margin: 8px 0; width: 100%; }
+    #action-btn { flex: 1; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: block; }
+    #cancel-btn { padding: 12px 18px; font-size: 15px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; }
+    #action-btn:active, #cancel-btn:active { transform: scale(0.98); }
+    
     #status { margin: 6px 0; padding: 8px; font-size: 14px; font-weight: bold; border-radius: 5px; background-color: #fff; border-left: 5px solid #bdc3c7; box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 54px; line-height: 1.3; }
     .stock-panel { padding: 8px 12px; background: #fff; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 4px; }
     .stock-panel h3 { margin: 0 0 6px 0; font-size: 12px; color: #7f8c8d; text-align: left; border-bottom: 1px solid #ecf0f1; padding-bottom: 3px; }
@@ -56,7 +67,11 @@
       <div id="loading-overlay">カメラ初期化中...</div>
     </div>
 
-    <button id="action-btn">🔍 スキャンを開始する</button>
+    <div class="btn-group">
+      <button id="action-btn">🔍 スキャンを開始する</button>
+      <button id="cancel-btn">🛑 キャンセル</button>
+    </div>
+    
     <canvas id="canvas" style="display:none;"></canvas>
     <div id="status">モードを選択し、ボタンを押して開始してください</div>
 
@@ -82,7 +97,7 @@
     const ENTRY_DATA2 = "entry.1094519910";
 
     // 💡 ウェブアプリURLをここに貼り付け
-    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxETi6p3169mYdsFkBWyeijQwa14SzWEAxlgrbLJO97pcajwxpkzwTiP_CKAkzEfghI1Q/exec"; 
+    const STOCK_API_URL = ""; 
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -90,6 +105,7 @@
     const overlay = document.getElementById('loading-overlay');
     const scanOverlay = document.getElementById('scan-overlay');
     const actionBtn = document.getElementById('action-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
     
     let isScanning = false; 
     let currentMode = "生徒へ貸出";
@@ -111,18 +127,23 @@
       }
     });
 
+    // 🔍 スキャン開始ボタンの処理
     actionBtn.addEventListener('click', () => {
       if (isScanning) return; 
-      isScanning = true;
+      
+      isScanning = true; // ✨ 確実にカメラスキャンセンサーのスイッチを入れる
       scanOverlay.innerText = "";
       scanOverlay.className = "active";
       
       if (currentMode === "生徒へ貸出") {
-        scanOverlay.classList.add('rent-mode');
         if (!savedStudentId) {
+          scanOverlay.classList.add('rent-mode');
           updateStatus("【スキャン中】生徒のID（4桁数字）をかざしてください", "#3498db");
+          cancelBtn.style.display = "none"; // 1回目はまだキャンセル不要
         } else {
-          updateStatus(`【スキャン中】機体QR（通常機・予備機どちらでも可）をかざしてください\n[対象生徒: ${savedStudentId}]`, "#e67e22");
+          scanOverlay.classList.add('rent-device-mode');
+          updateStatus("【スキャン中】機体QR（通常機・予備機どちらでも可）をかざしてください", "#e67e22");
+          cancelBtn.style.display = "block"; // 2回目待ちの時はキャンセルを表示
         }
       } else if (currentMode === "生徒から返却") {
         scanOverlay.classList.add('return-mode');
@@ -137,12 +158,18 @@
       actionBtn.style.display = "none"; 
     });
 
+    // 🛑 キャンセルボタンの処理
+    cancelBtn.addEventListener('click', () => {
+      resetSystemState(); // 送信を一切せずに待機状態にリセット
+    });
+
     function resetSystemState() {
       isScanning = false;
       savedStudentId = "";
       scanOverlay.innerText = "⏸️ スキャン停止中";
       scanOverlay.className = "";
       actionBtn.style.display = "block";
+      cancelBtn.style.display = "none"; // キャンセルボタンを隠す
       
       if (currentMode === "生徒へ貸出") {
         actionBtn.innerText = "🔍 生徒IDのスキャンを開始";
@@ -189,13 +216,13 @@
         if (code) {
           const scannedText = code.data.trim();
           
-          // 【核心のバグ修正】2回目のスキャン待ちの時、映ったデータが1回目と同じ「生徒ID」だった場合は、完全に無視してカメラを継続する
+          // 生徒IDの残像による誤読ガード
           if (currentMode === "生徒へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
             requestAnimationFrame(tick);
             return;
           }
           
-          isScanning = false; // 正常な新しいコードを検知したら即座にロック
+          isScanning = false; // 読み取った瞬間に即座にセンサー停止
           handleScannedData(scannedText);
           return; 
         }
@@ -209,17 +236,20 @@
 
       if (currentMode === "生徒へ貸出") {
         if (!savedStudentId) {
+          // 生徒IDスキャン成功
           if (/^\d{4}$/.test(scannedText)) { 
             savedStudentId = scannedText;
-            updateStatus(`👤 生徒 [ID: ${savedStudentId}] をロックしました。\n次に貸し出す【機体（通常・予備）のQR】を準備し、下のボタンを押してください。`, "#2c3e50");
+            updateStatus(`👤 生徒 [ID: ${savedStudentId}] をロックしました。\n次に貸し出す【機体QR】を準備し、下のボタンを押してください。`, "#2c3e50");
             actionBtn.innerText = "🔍 端末QRのスキャンを開始";
             actionBtn.style.backgroundColor = "#e67e22"; 
             actionBtn.style.display = "block";
+            cancelBtn.style.display = "block"; // ここでキャンセルボタンを露出させる
           } else {
             updateStatus("❌ エラー: 生徒の4桁IDではありません。やり直してください。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
+          // 端末QRスキャン成功 ➔ 送信へ
           executeSubmit(currentMode, savedStudentId, scannedText);
         }
       } else {
@@ -230,6 +260,7 @@
     async function executeSubmit(mode, data1, data2) {
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       actionBtn.style.display = "none";
+      cancelBtn.style.display = "none";
       
       const formData = new FormData();
       formData.append(ENTRY_MODE, mode);
