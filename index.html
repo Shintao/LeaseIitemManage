@@ -338,7 +338,7 @@
       document.body.appendChild(script);
     }
 
-    async function executeSubmit(mode, data1, data2) {
+async function executeSubmit(mode, data1, data2) {
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       cancelBtn.style.display = "none";
       
@@ -351,9 +351,11 @@
       formData.append(ENTRY_DATA2, safeData2);
 
       try {
+        // ① Googleフォームへデータを送信
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
         log(`✅ Googleフォームへのデータ送信を完了しました。`);
         
+        // ② 画面上に完了メッセージを表示
         if (mode === "利用者へ貸出") {
           updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
         } else if (mode.indexOf("返却") !== -1) {
@@ -364,14 +366,26 @@
           updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
         }
         
-        log("🔄 貸出/返却完了に伴い、在庫数表示の更新リクエストを送信しました...");
-        fetchStockInfo();
+        // 💡【ここを修正】
+        // すぐに在庫を取得するのではなく、画面に「完了！」と出ている間の【3秒間（3000ミリ秒）】、
+        // スプレッドシート側の書き込み処理が終わるのをじっと待ちます。
+        log("⏳ スプレッドシートの同期完了を待っています（3秒間）...");
         
+        setTimeout(() => {
+          // ③ 3秒経って、スプレッドシートの更新が確実に終わったタイミングで最新の在庫数を取得
+          log("🔄 サーバーの更新が完了したため、最新の在庫数を取得します。");
+          fetchStockInfo();
+          
+          // ④ 在庫を取得した直後に、画面全体をスキャン前の初期状態（待機中）に戻す
+          resetSystemState();
+        }, 3000);
+
       } catch (e) {
         log(`❌ 送信エラーが発生しました: ${e.message}`);
         updateStatus("❌ 送信失敗:\n" + e.message, "red");
+        // エラー時も3秒後に通常状態に戻す
+        setTimeout(() => { resetSystemState(); }, 3000);
       }
-      setTimeout(() => { resetSystemState(); }, 3000);
     }
 
 function fetchStockInfo() {
