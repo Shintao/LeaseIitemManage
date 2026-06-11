@@ -97,33 +97,46 @@
     }
 
     // 外部サーバーからGASのdoPostへデータを送信する関数
-    async function sendToGas(id, status) {
-      statusDiv.innerText = `読み取り成功 [${id}]: スプレッドシート更新中...`;
-      statusDiv.style.color = "blue";
+// Googleフォームの送信先URL
+const FORM_URL = "https://docs.google.com/forms/d/1OZplV9EQLwFxeSsikpg9Ng8IeGNW3V2cVeIogk8qeI4/formResponse";
 
-      try {
-        const response = await fetch(GAS_URL, {
-          method: "POST",
-          mode: "no-cors", 
-          headers: {
-            "Content-Type": "text/plain"
-          },
-          body: JSON.stringify({ id: id, status: status })
-        });
-        
-        // 通常は中身が見えませんが、何が返ってきているか（不透明なレスポンスの型）を画面に出す
-        statusDiv.innerText = `送信処理完了。ブラウザ応答タイプ: ${response.type}\nステータスコード: ${response.status}`;
-        statusDiv.style.color = "green";
+async function sendToGas(id, status) {
+  statusDiv.innerText = `読み取り成功 [${id}]: フォーム経由で送信中...`;
+  statusDiv.style.color = "blue";
 
-      } catch (e) {
-        // 【最重要】もしブラウザの内部で処理がストップしていれば、ここに生のエラーが届きます
-        // エラー名（e.name）とメッセージ（e.message）を合体させて画面に強制出力します
-        statusDiv.innerText = `【ブラウザ内部でエラー発生】\nエラー名: ${e.name}\n内容: ${e.message}`;
-        statusDiv.style.color = "red";
-      }
+  // Googleフォームが受け取れるデータ形式（FormData）を作成
+  const formData = new FormData();
+  formData.append("entry.264257887", id);     // ★管理番号のentry番号に書き換え
+  formData.append("entry.2097412750", status); // ★ステータスのentry番号に書き換え
 
-      // ログを確認するため、自動でスキャンを再開するタイマーは一度オフ（コメントアウト）にします
+  try {
+    // Googleフォームに向けてPOST送信（これもmode: "no-cors"で行います）
+    await fetch(FORM_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: formData
+    });
+
+    // フォームへの送信は、学校のログイン認証（Cookie）が乗るか、
+    // あるいは組織内フォームの仕様に基づき、不審な通信として弾かれることなく
+    // 「ステータス0（opaque）」のままGoogleフォームのデータベースにカチッと吸い込まれます。
+    statusDiv.innerText = `【${id}】のステータスを「${status}」として送信しました。`;
+    statusDiv.style.color = "green";
+
+  } catch (e) {
+    statusDiv.innerText = "フォーム送信に失敗しました:\n" + e.message;
+    statusDiv.style.color = "red";
+  }
+
+  // 3秒後にスキャンを再開
+  setTimeout(() => {
+    if(statusDiv.style.color !== "red") {
+      statusDiv.innerText = "モードを選択してQRコードをかざしてください";
+      statusDiv.style.color = "#555";
     }
+    isScanning = true;
+  }, 3000);
+}
   </script>
 </body>
 </html>
