@@ -309,34 +309,39 @@
       }
     }
 
-    async function executeSubmit(mode, data1, data2) {
-      updateStatus("⏳ データを送信中...", "#7f8c8d");
-      actionBtn.style.display = "none";
-      
-      const formData = new FormData();
-      formData.append(ENTRY_MODE, mode);
-      formData.append(ENTRY_DATA1, data1);
-      formData.append(ENTRY_DATA2, data2);
+async function executeSubmit(mode, data1, data2) {
+  updateStatus("⏳ データを送信中...", "#7f8c8d");
+  actionBtn.style.display = "none";
+  
+  // 💡 【修正点】空文字のままだとブラウザが通信を遮断することがあるため、
+  // 中身が空（またはundefined）なら半角スペースを入れて確実に送信可能にします。
+  const safeData1 = (data1 === "" || data1 === undefined || data1 === null) ? " " : data1;
+  const safeData2 = (data2 === "" || data2 === undefined || data2 === null) ? " " : data2;
 
-      try {
-        await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
-        log(`✅ Googleフォームへのデータ送信を完了しました。`);
-        if (mode === "生徒へ貸出") {
-          updateStatus(`✅ 貸出完了！\n生徒 [${data1}] へ 端末 [${data2}] を登録しました。`, "#2ecc71");
-        } else if (mode === "生徒から返却") {
-          updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
-        } else if (mode === "端末新規登録") {
-          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
-        } else {
-          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
-        }
-        fetchStockInfo();
-      } catch (e) {
-        log(`❌ 送信エラーが発生しました: ${e.message}`);
-        updateStatus("❌ 送信失敗:\n" + e.message, "red");
-      }
-      setTimeout(() => { resetSystemState(); }, 3000);
+  const formData = new FormData();
+  formData.append(ENTRY_MODE, mode);
+  formData.append(ENTRY_DATA1, safeData1); // 安全化したデータをセット
+  formData.append(ENTRY_DATA2, safeData2); // 安全化したデータをセット
+
+  try {
+    await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
+    log(`✅ Googleフォームへのデータ送信を完了しました。`);
+    if (mode === "生徒へ貸出") {
+      updateStatus(`✅ 貸出完了！\n生徒 [${data1}] へ 端末 [${data2}] を登録しました。`, "#2ecc71");
+    } else if (mode.indexOf("返却") !== -1) {
+      updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
+    } else if (mode.indexOf("新規") !== -1 || mode.indexOf("登録") !== -1) {
+      updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
+    } else {
+      updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
     }
+    fetchStockInfo();
+  } catch (e) {
+    log(`❌ 送信エラーが発生しました: ${e.message}`);
+    updateStatus("❌ 送信失敗:\n" + e.message, "red");
+  }
+  setTimeout(() => { resetSystemState(); }, 3000);
+}
 
     function fetchStockInfo() {
       if (!STOCK_API_URL) return;
