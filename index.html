@@ -121,7 +121,7 @@
     const ENTRY_DATA1 = "entry.1165154720";
     const ENTRY_DATA2 = "entry.1094519910";
 
-    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxAmII1HsPKo7Xhxck1Yw8i9qPqBNSJYldYeWYvql0SJv3FBWfvQUxXubZV-rJFXH8I1g/exec"; 
+    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbyqZyifkr6rSvF6Sr4OnKnq66veG78msCcggYL-3QOLGqd96QzWXrgPruKXg3dBDAqR/exec"; 
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -374,16 +374,19 @@
       setTimeout(() => { resetSystemState(); }, 3000);
     }
 
-    function fetchStockInfo() {
+function fetchStockInfo() {
       if (!STOCK_API_URL) return;
       const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
       window[callbackName] = function(data) {
+        // 💡 画面上の「予備機」と「バッテリー」の表示エリアを取得
         const pcEl = document.getElementById('stock-pc');
         const batEl = document.getElementById('stock-battery');
         
+        // 💡 GAS（doGet）から返ってきた正しいキー名（data.pc と data.battery）を代入
         pcEl.innerText = data.pc + " 台"; 
         batEl.innerText = data.battery + " 個";
         
+        // 残数の警告色クラスの制御
         if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
         
@@ -392,7 +395,9 @@
         delete window[window[callbackName]]; 
         document.getElementById(callbackName).remove();
       };
-      const script = document.createElement('script'); script.id = callbackName;
+      
+      const script = document.createElement('script'); 
+      script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
       script.onerror = function() { 
         document.getElementById('stock-pc').innerText = "エラー"; 
