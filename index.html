@@ -12,7 +12,6 @@
     .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
     h2 { margin: 0; color: #2c3e50; font-size: 22px; }
     
-    /* モード切替ラジオボタン */
     .mode-container { display: flex; gap: 10px; }
     .mode-container input { display: none; }
     .mode-container label { text-align: center; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s; }
@@ -21,33 +20,27 @@
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
-    /* Chromebook用 左右2カラムレイアウト */
     .main-layout { display: flex; gap: 20px; flex: 1; min-height: 0; }
     .left-panel { flex: 1.1; display: flex; flex-direction: column; min-height: 0; gap: 12px; }
     .right-panel { flex: 0.9; display: flex; flex-direction: column; min-height: 0; gap: 12px; }
     
-    /* 📷 カメラエリア */
     #video-container { position: relative; width: 100%; height: 260px; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     video { width: 100%; height: 100%; object-fit: contain; display: block; }
     
     #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; justify-content:center; align-items:center; font-size:18px; font-weight:bold; z-index: 2; pointer-events: none; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.15); color: transparent; border: 5px solid #3498db; box-sizing: border-box; }
 
-    /* 🔘 操作ボタン */
     .btn-group { display: flex; flex-direction: column; gap: 10px; }
     #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.2s; }
     #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; }
     #action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
     
-    /* ステータス表示 */
     #status { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 8px solid #bdc3c7; box-shadow: 0 2px 5px rgba(0,0,0,0.05); min-height: 56px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.5; }
     
-    /* 📄 システム内部ログ */
     .log-panel { display: flex; flex-direction: column; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: 200px; min-height: 200px; }
     .log-panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
     #debug-console { flex: 1; background: #222; color: #00ff00; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 5px; overflow-y: auto; white-space: pre-wrap; }
     
-    /* 在庫状況パネル（元の2列仕様に美しく復元） */
     .stock-panel { padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stock-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
     .stock-grid { display: flex; justify-content: space-around; }
@@ -120,7 +113,6 @@
     const ENTRY_MODE = "entry.866648275";
     const ENTRY_DATA1 = "entry.1165154720";
     const ENTRY_DATA2 = "entry.1094519910";
-
     const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxGmBTg8T4quolzCtotdF3j_V0iWTpd7O2wvbsZ0i3saM3pAPekDj98npUVaGCqe2oMFQ/exec"; 
 
     const video = document.getElementById('video');
@@ -266,6 +258,7 @@
 
         if (code) {
           const scannedText = code.data.trim();
+          playSound("read"); // ★スキャン成功音
           log(`🎯 QR検出成功: [${scannedText}]`);
           
           if (currentMode === "利用者へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
@@ -291,6 +284,7 @@
           if (/^\d{4}$/.test(scannedText)) { 
             fetchUserName(scannedText);
           } else {
+            playSound("error"); // ★エラー音
             log(`❌ 判定エラー: [${scannedText}] は4桁の数字ではありません。`);
             updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
@@ -328,6 +322,7 @@
       script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + id + '&callback=' + callbackName;
       script.onerror = function() {
+        playSound("error"); // ★エラー音
         savedStudentId = id;
         savedStudentName = "名前取得エラー(未登録の可能性)";
         updateStatus(`👤 利用者ID: [${id}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、上のボタンを押してください。`, "#2c3e50");
@@ -338,7 +333,7 @@
       document.body.appendChild(script);
     }
 
-async function executeSubmit(mode, data1, data2) {
+    async function executeSubmit(mode, data1, data2) {
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       cancelBtn.style.display = "none";
       
@@ -351,11 +346,10 @@ async function executeSubmit(mode, data1, data2) {
       formData.append(ENTRY_DATA2, safeData2);
 
       try {
-        // ① Googleフォームへデータを送信
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
+        playSound("success"); // ★成功ジングル
         log(`✅ Googleフォームへのデータ送信を完了しました。`);
         
-        // ② 画面上に完了メッセージを表示
         if (mode === "利用者へ貸出") {
           updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
         } else if (mode.indexOf("返却") !== -1) {
@@ -366,50 +360,34 @@ async function executeSubmit(mode, data1, data2) {
           updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
         }
         
-        // 💡【ここを修正】
-        // すぐに在庫を取得するのではなく、画面に「完了！」と出ている間の【3秒間（3000ミリ秒）】、
-        // スプレッドシート側の書き込み処理が終わるのをじっと待ちます。
         log("⏳ スプレッドシートの同期完了を待っています（3秒間）...");
-        
         setTimeout(() => {
-          // ③ 3秒経って、スプレッドシートの更新が確実に終わったタイミングで最新の在庫数を取得
           log("🔄 サーバーの更新が完了したため、最新の在庫数を取得します。");
           fetchStockInfo();
-          
-          // ④ 在庫を取得した直後に、画面全体をスキャン前の初期状態（待機中）に戻す
           resetSystemState();
         }, 3000);
-
       } catch (e) {
+        playSound("error"); // ★エラー音
         log(`❌ 送信エラーが発生しました: ${e.message}`);
         updateStatus("❌ 送信失敗:\n" + e.message, "red");
-        // エラー時も3秒後に通常状態に戻す
         setTimeout(() => { resetSystemState(); }, 3000);
       }
     }
 
-function fetchStockInfo() {
+    function fetchStockInfo() {
       if (!STOCK_API_URL) return;
       const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
       window[callbackName] = function(data) {
-        // 💡 画面上の「予備機」と「バッテリー」の表示エリアを取得
         const pcEl = document.getElementById('stock-pc');
         const batEl = document.getElementById('stock-battery');
-        
-        // 💡 GAS（doGet）から返ってきた正しいキー名（data.pc と data.battery）を代入
         pcEl.innerText = data.pc + " 台"; 
         batEl.innerText = data.battery + " 個";
-        
-        // 残数の警告色クラスの制御
         if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
-        
         log(`📊 最新在庫に同期しました。[予備:${data.pc}台 / バッテリー:${data.battery}個]`);
-        
         delete window[window[callbackName]]; 
         document.getElementById(callbackName).remove();
       };
-      
       const script = document.createElement('script'); 
       script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
@@ -418,6 +396,40 @@ function fetchStockInfo() {
         document.getElementById('stock-battery').innerText = "エラー"; 
       };
       document.body.appendChild(script);
+    }
+
+    function playSound(type) {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === "read") {
+        osc.frequency.value = 880;
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+        osc.stop(audioCtx.currentTime + 0.1);
+      } else if (type === "error") {
+        [880, 880, 880].forEach((freq, i) => {
+          setTimeout(() => {
+            const o = audioCtx.createOscillator();
+            o.connect(gain);
+            o.frequency.value = freq;
+            o.start();
+            o.stop(audioCtx.currentTime + 0.1);
+          }, i * 150);
+        });
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+      } else if (type === "success") {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
+        osc.frequency.setValueAtTime(783, audioCtx.currentTime + 0.4);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.8);
+        osc.stop(audioCtx.currentTime + 0.8);
+      }
     }
     window.onload = () => { fetchStockInfo(); };
   </script>
