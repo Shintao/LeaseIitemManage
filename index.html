@@ -12,7 +12,7 @@
     .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
     h2 { margin: 0; color: #2c3e50; font-size: 22px; }
     
-    /* モード切替ラジオボタン（押しやすく大きく変更） */
+    /* モード切替ラジオボタン */
     .mode-container { display: flex; gap: 10px; }
     .mode-container input { display: none; }
     .mode-container label { text-align: center; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s; }
@@ -33,10 +33,9 @@
     #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; justify-content:center; align-items:center; font-size:18px; font-weight:bold; z-index: 2; pointer-events: none; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.15); color: transparent; border: 5px solid #3498db; box-sizing: border-box; }
 
-    /* 🔘 操作ボタン（サイズを拡大・押しやすく） */
+    /* 🔘 操作ボタン */
     .btn-group { display: flex; flex-direction: column; gap: 10px; }
     #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.2s; }
-    /* 中断ボタン（初期状態は非表示） */
     #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; }
     #action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
     
@@ -44,16 +43,16 @@
     #status { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 8px solid #bdc3c7; box-shadow: 0 2px 5px rgba(0,0,0,0.05); min-height: 56px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.5; }
     
     /* 📄 システム内部ログ */
-    .log-panel { display: flex; flex-direction: column; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: 180px; min-height: 180px; }
+    .log-panel { display: flex; flex-direction: column; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: 200px; min-height: 200px; }
     .log-panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
     #debug-console { flex: 1; background: #222; color: #00ff00; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 5px; overflow-y: auto; white-space: pre-wrap; }
     
-    /* 在庫状況パネル（新運用に伴い3列仕様に変更） */
+    /* 在庫状況パネル（元の2列仕様に美しく復元） */
     .stock-panel { padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stock-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
-    .stock-grid { display: flex; justify-content: space-around; gap: 10px; }
-    .stock-item { text-align: center; font-size: 13px; flex: 1; }
-    .stock-count { font-size: 24px; font-weight: bold; color: #2c3e50; margin-top: 6px; }
+    .stock-grid { display: flex; justify-content: space-around; }
+    .stock-item { text-align: center; font-size: 14px; }
+    .stock-count { font-size: 26px; font-weight: bold; color: #2c3e50; margin-top: 6px; }
     .stock-count.low { color: #e74c3c; }
     #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
   </style>
@@ -101,15 +100,11 @@
           <h3>現在の貸出可能在庫</h3>
           <div class="stock-grid">
             <div class="stock-item">
-              <div>💻 予備機 (9900番)</div>
-              <div class="stock-count" id="stock-pc99">---</div>
+              <div>💻 予備機 (9900番台)</div>
+              <div class="stock-count" id="stock-pc">---</div>
             </div>
             <div class="stock-item">
-              <div>💼 職員用 (9000番)</div>
-              <div class="stock-count" id="stock-pc90">---</div>
-            </div>
-            <div class="stock-item">
-              <div>🔋 バッテリー</div>
+              <div>🔋 モバイルバッテリー</div>
               <div class="stock-count" id="stock-battery">---</div>
             </div>
           </div>
@@ -126,8 +121,7 @@
     const ENTRY_DATA1 = "entry.1165154720";
     const ENTRY_DATA2 = "entry.1094519910";
 
-    // 💡 サーバー（GAS）側のWebアプリURL
-    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxm9gq2qLuvoaseXaKmm5Ral0V_Xouuokl8D7edN2dtEMJY0EH7TGuig4PKu1hBIFOicA/exec"; 
+    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxAmII1HsPKo7Xhxck1Yw8i9qPqBNSJYldYeWYvql0SJv3FBWfvQUxXubZV-rJFXH8I1g/exec"; 
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -141,7 +135,7 @@
     let isScanning = false; 
     let currentMode = "利用者へ貸出";
     let savedStudentId = ""; 
-    let savedStudentName = ""; // ロックされた利用者の氏名を格納
+    let savedStudentName = ""; 
     let tickCount = 0;
 
     function log(msg) {
@@ -172,7 +166,6 @@
       }
     });
 
-    // 🔍 スキャン開始ボタンの処理
     actionBtn.addEventListener('click', () => {
       if (isScanning) return; 
       
@@ -206,11 +199,10 @@
       tick();
     });
 
-    // 🛑 中断（キャンセル）ボタンの処理
     cancelBtn.addEventListener('click', () => {
       log("🛑 中断ボタンが押されました。初期状態にリセットします。");
       resetSystemState();
-      fetchStockInfo(); // 中断時も念のため在庫を最新にする
+      fetchStockInfo(); 
     });
 
     function resetSystemState() {
@@ -300,7 +292,7 @@
             fetchUserName(scannedText);
           } else {
             log(`❌ 判定エラー: [${scannedText}] は4桁の数字ではありません。`);
-            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり連します。", "red");
+            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
@@ -372,7 +364,6 @@
           updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
         }
         
-        // 💡 【重要】送信完了メッセージを出している間に、裏で最新の在庫数を取得しに行く
         log("🔄 貸出/返却完了に伴い、在庫数表示の更新リクエストを送信しました...");
         fetchStockInfo();
         
@@ -380,8 +371,6 @@
         log(`❌ 送信エラーが発生しました: ${e.message}`);
         updateStatus("❌ 送信失敗:\n" + e.message, "red");
       }
-      
-      // 次の処理へ移るタイミング（3秒後）で、完全に画面がリセットされ最新在庫が反映されます
       setTimeout(() => { resetSystemState(); }, 3000);
     }
 
@@ -389,19 +378,16 @@
       if (!STOCK_API_URL) return;
       const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
       window[callbackName] = function(data) {
-        const pc99El = document.getElementById('stock-pc99');
-        const pc90El = document.getElementById('stock-pc90');
+        const pcEl = document.getElementById('stock-pc');
         const batEl = document.getElementById('stock-battery');
         
-        pc99El.innerText = data.pc99 + " 台"; 
-        pc90El.innerText = data.pc90 + " 台"; 
+        pcEl.innerText = data.pc + " 台"; 
         batEl.innerText = data.battery + " 個";
         
-        if(data.pc99 <= 2) pc99El.classList.add('low'); else pc99El.classList.remove('low');
-        if(data.pc90 <= 2) pc90El.classList.add('low'); else pc90El.classList.remove('low');
+        if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
         
-        log(`📊 最新在庫に同期しました。[予備:${data.pc99}台 / 職員:${data.pc90}台 / バッテリー:${data.battery}個]`);
+        log(`📊 最新在庫に同期しました。[予備:${data.pc}台 / バッテリー:${data.battery}個]`);
         
         delete window[window[callbackName]]; 
         document.getElementById(callbackName).remove();
@@ -409,8 +395,7 @@
       const script = document.createElement('script'); script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
       script.onerror = function() { 
-        document.getElementById('stock-pc99').innerText = "エラー"; 
-        document.getElementById('stock-pc90').innerText = "エラー"; 
+        document.getElementById('stock-pc').innerText = "エラー"; 
         document.getElementById('stock-battery').innerText = "エラー"; 
       };
       document.body.appendChild(script);
