@@ -9,7 +9,6 @@
     body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; margin: 0; color: #333; }
     h2 { margin-top: 10px; color: #2c3e50; font-size: 24px; }
     
-    /* モードセレクターのスタイリング */
     .mode-container { display: flex; flex-wrap: wrap; justify-content: center; max-width: 600px; margin: 15px auto; gap: 10px; }
     .mode-container input { display: none; }
     .mode-container label {
@@ -21,22 +20,30 @@
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
-    /* カメラエリア */
     #video-container { position: relative; width: 100%; max-width: 440px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 10px; overflow: hidden; background-color: #000; }
-    video { width: 100%; aspect-ratio: 4/3; display: block; transform: scaleX(1); } /* 必要に応じて鏡像反転を削除 */
+    video { width: 100%; aspect-ratio: 4/3; display: block; }
     
-    /* ステータス・案内表示 */
+    /* スキャン停止中のオーバーレイ表示 */
+    #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; font-size:18px; font-weight:bold; transition: all 0.3s; }
+    #scan-overlay.active { background: rgba(52, 152, 219, 0.2); color: transparent; border: 4px solid #3498db; box-sizing: border-box; }
+    #scan-overlay.active.return-mode { border-color: #2ecc71; background: rgba(46, 204, 113, 0.2); }
+    #scan-overlay.active.admin-add { border-color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
+    #scan-overlay.active.admin-del { border-color: #e67e22; background: rgba(230, 126, 34, 0.2); }
+
+    /* トリガーボタンの装飾 */
+    #action-btn { width: 100%; max-width: 440px; margin: 15px auto; padding: 15px; font-size: 18px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s; display: block; }
+    #action-btn:active { transform: scale(0.98); box-shadow: 0 2px 3px rgba(0,0,0,0.1); }
+    
     #status { margin: 15px auto; max-width: 440px; min-height: 70px; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 6px; background-color: #fff; border-left: 5px solid #bdc3c7; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
     
-    /* 在庫状況パネル */
     .stock-panel { max-width: 440px; margin: 20px auto; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stock-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #7f8c8d; text-align: left; border-bottom: 1px solid #ecf0f1; padding-bottom: 5px; }
     .stock-grid { display: flex; justify-content: space-around; }
     .stock-item { text-align: center; }
     .stock-count { font-size: 24px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
     .stock-count.low { color: #e74c3c; }
-
-    #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; }
+    
+    #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
   </style>
 </head>
 <body>
@@ -59,12 +66,15 @@
 
   <div id="video-container">
     <video id="video" autoplay playsinline muted></video>
+    <div id="scan-overlay">⏸️ スキャン停止中</div>
     <div id="loading-overlay">カメラ初期化中...</div>
   </div>
+
+  <button id="action-btn">🔍 スキャンを開始する</button>
   
   <canvas id="canvas" style="display:none;"></canvas>
   
-  <div id="status" id="status-box">モードを選択してQRコードをかざしてください</div>
+  <div id="status">モードを選択し、ボタンを押して開始してください</div>
 
   <div class="stock-panel">
     <h3>現在の貸出可能在庫（予備・パワバ）</h3>
@@ -81,46 +91,98 @@
   </div>
 
   <script>
-    // Googleフォーム定義情報
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
     const ENTRY_MODE = "entry.866648275";
     const ENTRY_DATA1 = "entry.1165154720";
     const ENTRY_DATA2 = "entry.1094519910";
 
-    // スプレッドシート在庫取得用APIのURL（※のちほどGAS側で生成したURLをここに貼り付けます）
+    // 💡 ご自身の「デプロイされたウェブアプリのURL」をここに貼り付けてください
     const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbwil9WDT8CVgv5AcurUv_Jpt8eVWPijlSmLdgwqOOeJvaiZYBTVwBXlOe2heH45Mtddpg/exec"; 
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const statusDiv = document.getElementById('status');
     const overlay = document.getElementById('loading-overlay');
+    const scanOverlay = document.getElementById('scan-overlay');
+    const actionBtn = document.getElementById('action-btn');
     
-    let isScanning = true;
+    let isScanning = false; // 初期状態はスキャン停止
     let currentMode = "生徒へ貸出";
-    
-    // 2回連続スキャン用の一時保存変数
     let savedStudentId = ""; 
 
-    // ラジオボタンの変更監視
+    // モード切り替えイベント
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         currentMode = e.target.value;
-        resetScanState();
+        localStorage.setItem('selectedMode', currentMode); // モード記憶
+        resetSystemState();
       });
     });
 
-    // スキャン状態の初期化
-    function resetScanState() {
-      savedStudentId = "";
+    // ページ読み込み時に前回のモードを復元
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedMode = localStorage.getItem('selectedMode');
+      if (savedMode) {
+        const radio = document.querySelector(`input[value="${savedMode}"]`);
+        if (radio) {
+          radio.checked = true;
+          currentMode = savedMode;
+        }
+      }
+    });
+
+    // トリガーボタンのアクション
+    actionBtn.addEventListener('click', () => {
+      if (isScanning) return; // 既にスキャン中なら無視
+      
       isScanning = true;
+      scanOverlay.innerText = "";
+      scanOverlay.className = "active";
+      
+      // モードに応じたボタンとオーバーレイの視覚効果変更
       if (currentMode === "生徒へ貸出") {
-        updateStatus("【STEP 1】 生徒のID（4桁数字）のQRコードをかざしてください", "#3498db");
+        scanOverlay.classList.add('rent-mode');
+        if (!savedStudentId) {
+          updateStatus("【スキャン中】生徒のIDコード（4桁数字）をかざしてください", "#3498db");
+        } else {
+          updateStatus(`【スキャン中】生徒 [ID: ${savedStudentId}] に渡す端末のQRをかざしてください`, "#3498db");
+        }
       } else if (currentMode === "生徒から返却") {
-        updateStatus("返却する端末（本体/アダプタ/パワバ）のQRコードをかざしてください", "#2ecc71");
+        scanOverlay.classList.add('return-mode');
+        updateStatus("【スキャン中】返却する端末のQRコードをかざしてください", "#2ecc71");
       } else if (currentMode === "端末新規登録") {
-        updateStatus("【管理者モード】 新規登録する端末のQRコードをかざしてください", "#9b59b6");
+        scanOverlay.classList.add('admin-add');
+        updateStatus("【スキャン中】新規登録する端末のQRコードをかざしてください", "#9b59b6");
       } else {
-        updateStatus("【管理者モード】 登録解除（回収済化）する端末のQRコードをかざしてください", "#e67e22");
+        scanOverlay.classList.add('admin-del');
+        updateStatus("【スキャン中】登録解除する端末のQRコードをかざしてください", "#e67e22");
+      }
+      actionBtn.style.display = "none"; // スキャン中はボタンを隠す
+    });
+
+    function resetSystemState() {
+      isScanning = false;
+      savedStudentId = "";
+      scanOverlay.innerText = "⏸️ スキャン停止中";
+      scanOverlay.className = "";
+      actionBtn.style.display = "block";
+      
+      if (currentMode === "生徒へ貸出") {
+        actionBtn.innerText = "🔍 生徒IDのスキャンを開始";
+        actionBtn.style.backgroundColor = "#3498db";
+        updateStatus("【現在の状況】待機中。上のボタンを押して生徒IDを読み取ってください。", "#3498db");
+      } else if (currentMode === "生徒から返却") {
+        actionBtn.innerText = "🔍 返却スキャンを開始";
+        actionBtn.style.backgroundColor = "#2ecc71";
+        updateStatus("【現在の状況】待機中。上のボタンを押して返却端末を読み取ってください。", "#2ecc71");
+      } else if (currentMode === "端末新規登録") {
+        actionBtn.innerText = "🔍 新規登録スキャンを開始";
+        actionBtn.style.backgroundColor = "#9b59b6";
+        updateStatus("【管理者モード】上のボタンを押して新規端末を読み取ってください。", "#9b59b6");
+      } else {
+        actionBtn.innerText = "🔍 登録解除スキャンを開始";
+        actionBtn.style.backgroundColor = "#e67e22";
+        updateStatus("【管理者モード】上のボタンを押して解除する端末を読み取ってください。", "#e67e22");
       }
     }
 
@@ -130,12 +192,11 @@
       statusDiv.style.color = color;
     }
 
-    // カメラ起動
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
     .then(stream => { 
       video.srcObject = stream; 
       overlay.style.display = "none";
-      resetScanState();
+      resetSystemState();
       requestAnimationFrame(tick);
     })
     .catch(err => { 
@@ -144,7 +205,7 @@
     });
 
     function tick() {
-      if (video.currentTime > 0 && video.videoWidth > 0 && video.videoHeight > 0) {
+      if (isScanning && video.currentTime > 0 && video.videoWidth > 0 && video.videoHeight > 0) {
         const context = canvas.getContext('2d');
         canvas.height = video.videoHeight;
         canvas.width = video.videoWidth;
@@ -153,51 +214,47 @@
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
 
-        if (code && isScanning) {
-          isScanning = false; // 二重読み込み防止
-          handleScannedData(code.data.trim());
-          return; // ループを一旦抜けて制御
+        if (code) {
+          const scannedText = code.data.trim();
+          isScanning = false; // 読んだ瞬間に即座にスキャンループを強制停止
+          handleScannedData(scannedText);
+          return; 
         }
       }
       requestAnimationFrame(tick);
     }
 
-    // スキャンしたデータの振り分けロジック
     function handleScannedData(scannedText) {
-      // 1. 生徒へ貸出モード（2回連続スキャン方式）
+      // 読み取り成功のため一度スキャン停止状態の見た目に戻す
+      scanOverlay.innerText = "⏸️ スキャン停止中";
+      scanOverlay.className = "";
+
       if (currentMode === "生徒へ貸出") {
         if (!savedStudentId) {
-          // 1回目の読み取り：生徒IDであるべき（4桁の数字を想定、適宜正規表現を変更してください）
-          if (/^\d{4}$/.test(scannedText) || scannedText.startsWith("9")) { 
+          // STEP 1: 生徒IDの読み取り完了
+          if (/^\d{4}$/.test(scannedText)) { 
             savedStudentId = scannedText;
-            updateStatus(`生徒 [ID: ${savedStudentId}] を認識しました。\n【STEP 2】 渡す端末のQRコードをかざしてください。`, "#3498db");
-            // 1秒後に次のスキャンを受け付ける（手の離れを待つフールプルーフ）
-            setTimeout(() => { isScanning = true; requestAnimationFrame(tick); }, 1200);
+            updateStatus(`👤 生徒 [ID: ${savedStudentId}] をロックしました。\n次の端末スキャンに進むには、下のボタンを押してください。`, "#2c3e50");
+            actionBtn.innerText = "🔍 端末QRのスキャンを開始";
+            actionBtn.style.backgroundColor = "#e67e22"; // 2回目は色を変えて注意を促す
+            actionBtn.style.display = "block";
           } else {
-            updateStatus("❌ エラー: 先に生徒の4桁IDコードを読み取ってください。", "red");
-            setTimeout(() => { resetScanState(); requestAnimationFrame(tick); }, 2000);
+            updateStatus("❌ エラー: 生徒の4桁IDコードではありませんでした。最初からやり直してください。", "red");
+            setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
-          // 2回目の読み取り：端末番号（1回目と同じデータが読まれてしまったら無視するフールプルーフ）
-          if (scannedText === savedStudentId) {
-            isScanning = true;
-            requestAnimationFrame(tick);
-            return;
-          }
-          // 送信処理へ
+          // STEP 2: 端末番号の読み取り完了
           executeSubmit(currentMode, savedStudentId, scannedText);
         }
-      } 
-      // 2. それ以外のモード（1回スキャン方式：返却・登録・解除）
-      else {
-        // 返却・登録・解除はデータ1に端末番号、データ2は空欄で送信
+      } else {
+        // 返却・登録・解除
         executeSubmit(currentMode, scannedText, "");
       }
     }
 
-    // Googleフォームへの送信実行
     async function executeSubmit(mode, data1, data2) {
       updateStatus("⏳ データを送信中...", "#7f8c8d");
+      actionBtn.style.display = "none";
       
       const formData = new FormData();
       formData.append(ENTRY_MODE, mode);
@@ -207,66 +264,53 @@
       try {
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
         
-        // 画面上への完了通知（フールプルーフ：視覚的にわかりやすく）
         if (mode === "生徒へ貸出") {
-          updateStatus(`✅ 送信完了！\n生徒 [${data1}] へ 端末 [${data2}] を貸出しました。`, "#2ecc71");
+          updateStatus(`✅ 貸出完了！\n生徒 [${data1}] へ 端末 [${data2}] を貸出しました。`, "#2ecc71");
         } else if (mode === "生徒から返却") {
-          updateStatus(`✅ 送信完了！\n端末 [${data1}] の返却処理を受け付けました。`, "#2ecc71");
+          updateStatus(`✅ 返却完了！\n端末 [${data1}] の返却処理が完了しました。`, "#2ecc71");
         } else if (mode === "端末新規登録") {
           updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加しました。`, "#9b59b6");
         } else {
           updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を回収済（廃棄枠）にしました。`, "#e67e22");
         }
         
-        // 送信が成功したら在庫状況を再取得（APIURLがセットされている場合）
         fetchStockInfo();
 
       } catch (e) {
         updateStatus("❌ 送信に失敗しました。電波状況を確認してください。\n" + e.message, "red");
       }
 
-      // 3.5秒後に待機状態に戻す（処理完了の確認時間を長めに確保）
+      // 3.5秒後に完全初期状態に戻す
       setTimeout(() => {
-        resetScanState();
-        requestAnimationFrame(tick);
+        resetSystemState();
       }, 3500);
     }
 
-    // 在庫状況をスプレッドシートから非同期取得する関数
-// 【対策版】在庫状況をスプレッドシートから安全に非同期取得する関数
-// 【決定版】CORS制限を完全回避して在庫状況を安全に取得する関数
     function fetchStockInfo() {
       if (!STOCK_API_URL) return;
       
-      // ユニークな関数名を作ってグローバルに登録します
       const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
       
       window[callbackName] = function(data) {
         const pcEl = document.getElementById('stock-pc');
         const batEl = document.getElementById('stock-battery');
         
-        // 画面の文字を更新
         pcEl.innerText = data.pc + " 台";
         batEl.innerText = data.battery + " 個";
         pcEl.style.color = "#2c3e50";
         batEl.style.color = "#2c3e50";
         
-        // 残数が少なくなったら赤字にする演出
         if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
         
-        // 使用済みのタグと関数を掃除
         delete window[callbackName];
         document.getElementById(callbackName).remove();
       };
       
-      // <script>タグを動的に生成して、ブラウザのセキュリティ検閲をすり抜けます
       const script = document.createElement('script');
       script.id = callbackName;
-      // URLの末尾に「?callback=〇〇」を付与してGASへリクエストします
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
       
-      // エラーハンドリング（万が一ダメだった場合）
       script.onerror = function() {
         document.getElementById('stock-pc').innerText = "エラー";
         document.getElementById('stock-battery').innerText = "エラー";
@@ -275,7 +319,6 @@
       document.body.appendChild(script);
     }
 
-    // ページ読み込み時に一度在庫をチェック
     window.onload = () => { fetchStockInfo(); };
   </script>
 </body>
