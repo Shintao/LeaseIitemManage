@@ -234,41 +234,45 @@
 
     // 在庫状況をスプレッドシートから非同期取得する関数
 // 【対策版】在庫状況をスプレッドシートから安全に非同期取得する関数
-    async function fetchStockInfo() {
+// 【決定版】CORS制限を完全回避して在庫状況を安全に取得する関数
+    function fetchStockInfo() {
       if (!STOCK_API_URL) return;
       
-      const pcEl = document.getElementById('stock-pc');
-      const batEl = document.getElementById('stock-battery');
+      // ユニークな関数名を作ってグローバルに登録します
+      const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
       
-      try {
-        // redirect: "follow" を追加して、Google特有のリダイレクトを強制的に追いかけさせます
-        const response = await fetch(STOCK_API_URL, { 
-          method: "GET",
-          redirect: "follow" 
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTPエラー! ステータス: ${response.status}`);
-        }
-        
-        const data = await response.json();
+      window[callbackName] = function(data) {
+        const pcEl = document.getElementById('stock-pc');
+        const batEl = document.getElementById('stock-battery');
         
         // 画面の文字を更新
         pcEl.innerText = data.pc + " 台";
         batEl.innerText = data.battery + " 個";
+        pcEl.style.color = "#2c3e50";
+        batEl.style.color = "#2c3e50";
         
         // 残数が少なくなったら赤字にする演出
         if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
         
-      } catch (e) {
-        console.error("在庫情報の取得に失敗:", e);
-        // 万が一通信エラーが起きた場合は、画面の表示をエラーに変えて視認できるようにします
-        pcEl.innerText = "エラー";
-        batEl.innerText = "エラー";
-        pcEl.style.color = "red";
-        batEl.style.color = "red";
-      }
+        // 使用済みのタグと関数を掃除
+        delete window[callbackName];
+        document.getElementById(callbackName).remove();
+      };
+      
+      // <script>タグを動的に生成して、ブラウザのセキュリティ検閲をすり抜けます
+      const script = document.createElement('script');
+      script.id = callbackName;
+      // URLの末尾に「?callback=〇〇」を付与してGASへリクエストします
+      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+      
+      // エラーハンドリング（万が一ダメだった場合）
+      script.onerror = function() {
+        document.getElementById('stock-pc').innerText = "エラー";
+        document.getElementById('stock-battery').innerText = "エラー";
+      };
+      
+      document.body.appendChild(script);
     }
 
     // ページ読み込み時に一度在庫をチェック
