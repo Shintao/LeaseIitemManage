@@ -19,7 +19,7 @@
     #video-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
     video { width: 100%; max-width: 400px; border: 3px solid #333; border-radius: 8px; background-color: #000; }
     #status { margin-top: 15px; font-size: 18px; font-weight: bold; color: #555; min-height: 50px; padding: 0 10px; }
-    #loading { font-size: 16px; color: #666; padding: 20px; }
+    #loading { font-size: 16px; color: #666; padding: 20px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -44,8 +44,18 @@
   <div id="status">モードを選択してQRコードをかざしてください</div>
 
   <script>
-    // ★ここに「実行ユーザー：自分」「組織内の全員」でデプロイした最新のウェブアプリURLを貼り付けてください★
-const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdSigMAy7duhn1rkc5DKFuN-qTDdvBUfsf1F1A8CPVaMLXv5g/formResponse";
+    // 【文字盤の強制表示機能】万が一JavaScriptのどこかで構文エラーがあれば画面に直接吐き出します
+    window.onerror = function(msg, url, line) {
+      const loadingDiv = document.getElementById('loading');
+      if (loadingDiv) {
+        loadingDiv.innerText = `❌ スクリプトエラー発生\nエラー内容: ${msg}\n発生行数: ${line}行目`;
+        loadingDiv.style.color = "red";
+      }
+      return false;
+    };
+
+    // 先ほど提示していただいた正しい公開用URLを設定
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdSigMAy7duhn1rkc5DKFuN-qTDdvBUfsf1F1A8CPVaMLXv5g/formResponse";
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -54,13 +64,9 @@ const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdSigMAy7duhn1rkc5DKF
     
     let isScanning = true;
 
-    // HTTPSドメイン上に配置されるため、Chromebookでも正常にカメラの許可ポップアップが出ます
+    // カメラの起動処理
     navigator.mediaDevices.getUserMedia({ 
-      video: { 
-        facingMode: "user",
-        width: { ideal: 640 },
-        height: { ideal: 480 }
-      }, 
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, 
       audio: false 
     })
     .then(stream => { 
@@ -69,7 +75,7 @@ const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdSigMAy7duhn1rkc5DKF
       requestAnimationFrame(tick);
     })
     .catch(err => { 
-      loadingDiv.innerText = "カメラ起動エラー: " + err.name + " (" + err.message + ")"; 
+      loadingDiv.innerText = "❌ カメラ起動エラー: " + err.name + " (" + err.message + ")"; 
       loadingDiv.style.color = "red";
     });
 
@@ -90,53 +96,45 @@ const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdSigMAy7duhn1rkc5DKF
           const scannedId = code.data;
           const selectedStatus = document.querySelector('input[name="status-mode"]:checked').value;
           
-          sendToGas(scannedId, selectedStatus);
+          sendToForm(scannedId, selectedStatus);
         }
       }
       requestAnimationFrame(tick);
     }
 
-    // 外部サーバーからGASのdoPostへデータを送信する関数
-// Googleフォームの送信先URL
-const FORM_URL = "https://docs.google.com/forms/d/1OZplV9EQLwFxeSsikpg9Ng8IeGNW3V2cVeIogk8qeI4/formResponse";
+    // Googleフォームの受付窓口にデータを送信する関数
+    async function sendToForm(id, status) {
+      statusDiv.innerText = `読み取り成功 [${id}]: フォーム経由で送信中...`;
+      statusDiv.style.color = "blue";
 
-async function sendToGas(id, status) {
-  statusDiv.innerText = `読み取り成功 [${id}]: フォーム経由で送信中...`;
-  statusDiv.style.color = "blue";
+      const formData = new FormData();
+      formData.append("entry.264257887", id);     // 管理番号
+      formData.append("entry.2097412750", status); // ステータス
 
-  // Googleフォームが受け取れるデータ形式（FormData）を作成
-  const formData = new FormData();
-  formData.append("entry.264257887", id);     // ★管理番号のentry番号に書き換え
-  formData.append("entry.2097412750", status); // ★ステータスのentry番号に書き換え
+      try {
+        await fetch(FORM_URL, {
+          method: "POST",
+          mode: "no-cors",
+          body: formData
+        });
 
-  try {
-    // Googleフォームに向けてPOST送信（これもmode: "no-cors"で行います）
-    await fetch(FORM_URL, {
-      method: "POST",
-      mode: "no-cors",
-      body: formData
-    });
+        statusDiv.innerText = `【${id}】のステータスを「${status}」として送信しました。`;
+        statusDiv.style.color = "green";
 
-    // フォームへの送信は、学校のログイン認証（Cookie）が乗るか、
-    // あるいは組織内フォームの仕様に基づき、不審な通信として弾かれることなく
-    // 「ステータス0（opaque）」のままGoogleフォームのデータベースにカチッと吸い込まれます。
-    statusDiv.innerText = `【${id}】のステータスを「${status}」として送信しました。`;
-    statusDiv.style.color = "green";
+      } catch (e) {
+        statusDiv.innerText = "フォーム送信に失敗しました:\n" + e.message;
+        statusDiv.style.color = "red";
+      }
 
-  } catch (e) {
-    statusDiv.innerText = "フォーム送信に失敗しました:\n" + e.message;
-    statusDiv.style.color = "red";
-  }
-
-  // 3秒後にスキャンを再開
-  setTimeout(() => {
-    if(statusDiv.style.color !== "red") {
-      statusDiv.innerText = "モードを選択してQRコードをかざしてください";
-      statusDiv.style.color = "#555";
+      // 3秒後にスキャンを再開
+      setTimeout(() => {
+        if(statusDiv.style.color !== "red") {
+          statusDiv.innerText = "モードを選択してQRコードをかざしてください";
+          statusDiv.style.color = "#555";
+        }
+        isScanning = true;
+      }, 3000);
     }
-    isScanning = true;
-  }, 3000);
-}
   </script>
 </body>
 </html>
