@@ -18,7 +18,6 @@
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
-    /* 🚨 映像を一切トリミングせず、歪みなくアスペクト比を維持して表示するよう修正 */
     #video-container { position: relative; width: 100%; flex: 1; min-height: 150px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; background-color: #000; }
     video { width: 100%; height: 100%; object-fit: contain; display: block; }
     
@@ -30,7 +29,6 @@
     #scan-overlay.active.admin-add { border-color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
     #scan-overlay.active.admin-del { border-color: #e67e22; background: rgba(230, 126, 34, 0.2); }
 
-    /* ボタンエリアの配置：横並びで完全に常駐 */
     .btn-group { display: flex; gap: 8px; margin: 8px 0; width: 100%; }
     #action-btn { flex: 2; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
     #cancel-btn { flex: 1; padding: 12px; font-size: 15px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
@@ -60,7 +58,7 @@
       <input type="radio" id="m-add" name="mode" value="端末新規登録">
       <label for="m-add">➕ 登録</label>
       <input type="radio" id="m-del" name="mode" value="端末登録解除">
-      <label for="m-del">❌ 解解</label>
+      <label for="m-del">❌ 解除</label>
     </div>
 
     <div id="video-container">
@@ -98,8 +96,8 @@
     const ENTRY_DATA1 = "entry.1165154720";
     const ENTRY_DATA2 = "entry.1094519910";
 
-    // 💡 ウェブアプリURLをここに貼り付け
-    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxETi6p3169mYdsFkBWyeijQwa14SzWEAxlgrbLJO97pcajwxpkzwTiP_CKAkzEfghI1Q/exec"; 
+    // 💡 在庫確認APIのURL
+    const STOCK_API_URL = ""; 
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -136,7 +134,7 @@
       isScanning = true; 
       scanOverlay.innerText = "";
       scanOverlay.className = "active";
-      actionBtn.disabled = true; // スキャン中は開始ボタンを押せないように固定
+      actionBtn.disabled = true; 
       
       if (currentMode === "生徒へ貸出") {
         if (!savedStudentId) {
@@ -156,9 +154,12 @@
         scanOverlay.classList.add('admin-del');
         updateStatus("【登録解除スキャン中】\nマスターから除籍する端末のQRコードをかざしてください。", "#e67e22");
       }
+
+      // 💡 【大修正】完全に停止してしまっている「tickループの心臓」を、ここでダイレクトに叩き起こして1から再起動させる
+      tick();
     });
 
-    // 🛑 中断（キャンセル）ボタンの処理：いつでも安全に完全初期化
+    // 🛑 中断（キャンセル）ボタンの処理：いつでも即座に初期化
     cancelBtn.addEventListener('click', () => {
       resetSystemState();
     });
@@ -198,7 +199,7 @@
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
     .then(stream => { 
-      video.srcObject = stream; overlay.style.display = "none"; resetSystemState(); requestAnimationFrame(tick);
+      video.srcObject = stream; overlay.style.display = "none"; resetSystemState();
     })
     .catch(err => { 
       overlay.innerText = "❌ カメラエラー: " + err.message;
@@ -206,7 +207,10 @@
     });
 
     function tick() {
-      if (isScanning && video.currentTime > 0 && video.videoWidth > 0 && video.videoHeight > 0) {
+      // スキャン停止命令が出ていたら、ここで処理ループを離脱する（これは正しい挙動）
+      if (!isScanning) return; 
+
+      if (video.currentTime > 0 && video.videoWidth > 0 && video.videoHeight > 0) {
         const context = canvas.getContext('2d');
         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -216,17 +220,18 @@
         if (code) {
           const scannedText = code.data.trim();
           
-          // 生徒IDスキャン直後の残像・二重読みガード
+          // 生徒IDスキャン直後の二重読み誤読ガード
           if (currentMode === "生徒へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
             requestAnimationFrame(tick);
             return;
           }
           
-          isScanning = false; // 読み取り成功でセンサー即ロック
+          isScanning = false; // 読み取り成功でループを抜ける
           handleScannedData(scannedText);
           return; 
         }
       }
+      // スキャン中の場合は、次のコマの描画へループを繋ぐ
       requestAnimationFrame(tick);
     }
 
@@ -253,7 +258,6 @@
           executeSubmit(currentMode, savedStudentId, scannedText);
         }
       } else {
-        // 返却や管理者モード
         executeSubmit(currentMode, scannedText, "");
       }
     }
