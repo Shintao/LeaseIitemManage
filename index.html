@@ -102,11 +102,7 @@
       statusDiv.style.color = "blue";
 
       try {
-        // 別ドメインからの通信になるため、ブラウザによる通信遮断（Failed to fetch）を防ぐために
-        // 再び mode: "no-cors" を使用します。
-        // 今回は「ローカルファイル(file:///)」ではなく「正規のサイト(https://)」からの発信になるため、
-        // Cookieが剥がれた匿名通信であっても、学校のプロキシをすり抜けてGASまで確実に到達します。
-        await fetch(GAS_URL, {
+        const response = await fetch(GAS_URL, {
           method: "POST",
           mode: "no-cors", 
           headers: {
@@ -115,24 +111,18 @@
           body: JSON.stringify({ id: id, status: status })
         });
         
-        // no-cors指定時のブラウザの仕様により、GASからの成否メッセージ（JSON）は中身を読み取れません。
-        // 通信自体が遮断されずに通過した時点で、画面上は「送信完了」とみなします。
-        statusDiv.innerText = `【${id}】のステータスを「${status}」として送信しました。`;
+        // 通常は中身が見えませんが、何が返ってきているか（不透明なレスポンスの型）を画面に出す
+        statusDiv.innerText = `送信処理完了。ブラウザ応答タイプ: ${response.type}\nステータスコード: ${response.status}`;
         statusDiv.style.color = "green";
 
       } catch (e) {
-        statusDiv.innerText = "通信に失敗しました:\n" + e.message;
+        // 【最重要】もしブラウザの内部で処理がストップしていれば、ここに生のエラーが届きます
+        // エラー名（e.name）とメッセージ（e.message）を合体させて画面に強制出力します
+        statusDiv.innerText = `【ブラウザ内部でエラー発生】\nエラー名: ${e.name}\n内容: ${e.message}`;
         statusDiv.style.color = "red";
       }
 
-      // 3秒後にスキャンを再開
-      setTimeout(() => {
-        if(statusDiv.style.color !== "red") {
-          statusDiv.innerText = "モードを選択してQRコードをかざしてください";
-          statusDiv.style.color = "#555";
-        }
-        isScanning = true;
-      }, 3000);
+      // ログを確認するため、自動でスキャンを再開するタイマーは一度オフ（コメントアウト）にします
     }
   </script>
 </body>
