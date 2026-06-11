@@ -2,90 +2,111 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>生徒用Chromebook等 貸出管理システム</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; margin: 0; color: #333; }
-    h2 { margin-top: 10px; color: #2c3e50; font-size: 24px; }
+    /* 画面全体を1画面に固定し、スクロールを禁止 */
+    html, body { 
+      height: 100%; margin: 0; padding: 0; overflow: hidden; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f6f9; color: #333;
+    }
     
-    .mode-container { display: flex; flex-wrap: wrap; justify-content: center; max-width: 600px; margin: 15px auto; gap: 10px; }
+    /* 縦方向に要素をきれいに等間隔配分するコンテナ */
+    .app-container {
+      display: flex; flex-direction: column;
+      height: 100%; max-width: 440px; margin: 0 auto; padding: 10px; box-sizing: border-box;
+    }
+
+    h2 { margin: 2px 0 8px 0; color: #2c3e50; font-size: 18px; text-align: center; }
+    
+    /* モード選択ボタン（高さを抑えてコンパクトに） */
+    .mode-container { display: flex; gap: 6px; margin-bottom: 8px; }
     .mode-container input { display: none; }
     .mode-container label {
-      flex: 1; min-width: 120px; padding: 12px 10px; font-size: 15px; font-weight: bold; 
-      cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s;
+      flex: 1; text-align: center; padding: 10px 2px; font-size: 12px; font-weight: bold; 
+      cursor: pointer; border: 2px solid #bdc3c7; border-radius: 6px; background-color: #fff; transition: all 0.2s;
     }
     input[value="生徒へ貸出"]:checked + label { background-color: #3498db; color: white; border-color: #2980b9; }
     input[value="生徒から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
-    #video-container { position: relative; width: 100%; max-width: 440px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 10px; overflow: hidden; background-color: #000; }
-    video { width: 100%; aspect-ratio: 4/3; display: block; }
+    /* カメラエリア：画面の空きスペースに合わせて自動縮小 */
+    #video-container { 
+      position: relative; width: 100%; flex: 1; min-height: 150px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; background-color: #000;
+    }
+    video { width: 100%; height: 100%; object-fit: cover; display: block; }
     
-    /* スキャン停止中のオーバーレイ表示 */
-    #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; font-size:18px; font-weight:bold; transition: all 0.3s; }
+    /* スキャン停止中のオーバーレイ */
+    #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; font-size:16px; font-weight:bold; transition: all 0.3s; z-index: 2; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.2); color: transparent; border: 4px solid #3498db; box-sizing: border-box; }
     #scan-overlay.active.return-mode { border-color: #2ecc71; background: rgba(46, 204, 113, 0.2); }
     #scan-overlay.active.admin-add { border-color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
     #scan-overlay.active.admin-del { border-color: #e67e22; background: rgba(230, 126, 34, 0.2); }
 
-    /* トリガーボタンの装飾 */
-    #action-btn { width: 100%; max-width: 440px; margin: 15px auto; padding: 15px; font-size: 18px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s; display: block; }
-    #action-btn:active { transform: scale(0.98); box-shadow: 0 2px 3px rgba(0,0,0,0.1); }
+    /* トリガーボタン */
+    #action-btn { width: 100%; margin: 8px 0; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); transition: all 0.1s; display: block; }
+    #action-btn:active { transform: scale(0.98); }
     
-    #status { margin: 15px auto; max-width: 440px; min-height: 70px; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 6px; background-color: #fff; border-left: 5px solid #bdc3c7; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+    /* ステータス表示エリア（高さを可変・フォントサイズ調整） */
+    #status { margin: 6px 0; padding: 8px; font-size: 14px; font-weight: bold; border-radius: 5px; background-color: #fff; border-left: 5px solid #bdc3c7; box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 54px; line-height: 1.3; }
     
-    .stock-panel { max-width: 440px; margin: 20px auto; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .stock-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #7f8c8d; text-align: left; border-bottom: 1px solid #ecf0f1; padding-bottom: 5px; }
+    /* 在庫パネル（コンパクト化） */
+    .stock-panel { padding: 8px 12px; background: #fff; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 4px; }
+    .stock-panel h3 { margin: 0 0 6px 0; font-size: 12px; color: #7f8c8d; text-align: left; border-bottom: 1px solid #ecf0f1; padding-bottom: 3px; }
     .stock-grid { display: flex; justify-content: space-around; }
-    .stock-item { text-align: center; }
-    .stock-count { font-size: 24px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
+    .stock-item { text-align: center; font-size: 12px; }
+    .stock-count { font-size: 18px; font-weight: bold; color: #2c3e50; margin-top: 2px; }
     .stock-count.low { color: #e74c3c; }
     
-    #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
+    #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:14px; z-index: 10; }
   </style>
 </head>
 <body>
 
-  <h2>Chromebook等 貸出管理システム</h2>
+  <div class="app-container">
+    <h2>Chromebook等 貸出管理</h2>
 
-  <div class="mode-container">
-    <input type="radio" id="m-rent" name="mode" value="生徒へ貸出" checked>
-    <label for="m-rent">📤 生徒へ貸出</label>
+    <div class="mode-container">
+      <input type="radio" id="m-rent" name="mode" value="生徒へ貸出" checked>
+      <label for="m-rent">📤 貸出</label>
+      
+      <input type="radio" id="m-return" name="mode" value="生徒から返却">
+      <label for="m-return">📥 返却</label>
+      
+      <input type="radio" id="m-add" name="mode" value="端末新規登録">
+      <label for="m-add">➕ 登録</label>
+      
+      <input type="radio" id="m-del" name="mode" value="端末登録解除">
+      <label for="m-del">❌ 解除</label>
+    </div>
+
+    <div id="video-container">
+      <video id="video" autoplay playsinline muted></video>
+      <div id="scan-overlay">⏸️ スキャン停止中</div>
+      <div id="loading-overlay">カメラ初期化中...</div>
+    </div>
+
+    <button id="action-btn">🔍 スキャンを開始する</button>
     
-    <input type="radio" id="m-return" name="mode" value="生徒から返却">
-    <label for="m-return">📥 生徒から返却</label>
+    <canvas id="canvas" style="display:none;"></canvas>
     
-    <input type="radio" id="m-add" name="mode" value="端末新規登録">
-    <label for="m-add">➕ 端末登録</label>
-    
-    <input type="radio" id="m-del" name="mode" value="端末登録解除">
-    <label for="m-del">❌ 登録解除</label>
-  </div>
+    <div id="status">モードを選択し、ボタンを押して開始してください</div>
 
-  <div id="video-container">
-    <video id="video" autoplay playsinline muted></video>
-    <div id="scan-overlay">⏸️ スキャン停止中</div>
-    <div id="loading-overlay">カメラ初期化中...</div>
-  </div>
-
-  <button id="action-btn">🔍 スキャンを開始する</button>
-  
-  <canvas id="canvas" style="display:none;"></canvas>
-  
-  <div id="status">モードを選択し、ボタンを押して開始してください</div>
-
-  <div class="stock-panel">
-    <h3>現在の貸出可能在庫（予備・パワバ）</h3>
-    <div class="stock-grid">
-      <div class="stock-item">
-        <div>💻 予備機 (9000番台)</div>
-        <div class="stock-count" id="stock-pc">---</div>
-      </div>
-      <div class="stock-item">
-        <div>🔋 モバイルバッテリー</div>
-        <div class="stock-count" id="stock-battery">---</div>
+    <div class="stock-panel">
+      <h3>現在の貸出可能在庫</h3>
+      <div class="stock-grid">
+        <div class="stock-item">
+          <div>💻 予備機 (9000番台)</div>
+          <div class="stock-count" id="stock-pc">---</div>
+        </div>
+        <div class="stock-item">
+          <div>🔋 モバイルバッテリー</div>
+          <div class="stock-count" id="stock-battery">---</div>
+        </div>
       </div>
     </div>
   </div>
@@ -106,20 +127,18 @@
     const scanOverlay = document.getElementById('scan-overlay');
     const actionBtn = document.getElementById('action-btn');
     
-    let isScanning = false; // 初期状態はスキャン停止
+    let isScanning = false; 
     let currentMode = "生徒へ貸出";
     let savedStudentId = ""; 
 
-    // モード切り替えイベント
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         currentMode = e.target.value;
-        localStorage.setItem('selectedMode', currentMode); // モード記憶
+        localStorage.setItem('selectedMode', currentMode); 
         resetSystemState();
       });
     });
 
-    // ページ読み込み時に前回のモードを復元
     window.addEventListener('DOMContentLoaded', () => {
       const savedMode = localStorage.getItem('selectedMode');
       if (savedMode) {
@@ -131,21 +150,19 @@
       }
     });
 
-    // トリガーボタンのアクション
     actionBtn.addEventListener('click', () => {
-      if (isScanning) return; // 既にスキャン中なら無視
+      if (isScanning) return; 
       
       isScanning = true;
       scanOverlay.innerText = "";
       scanOverlay.className = "active";
       
-      // モードに応じたボタンとオーバーレイの視覚効果変更
       if (currentMode === "生徒へ貸出") {
         scanOverlay.classList.add('rent-mode');
         if (!savedStudentId) {
-          updateStatus("【スキャン中】生徒のIDコード（4桁数字）をかざしてください", "#3498db");
+          updateStatus("【スキャン中】生徒のID（4桁）をかざしてください", "#3498db");
         } else {
-          updateStatus(`【スキャン中】生徒 [ID: ${savedStudentId}] に渡す端末のQRをかざしてください`, "#3498db");
+          updateStatus(`【スキャン中】生徒 [ID: ${savedStudentId}] の端末QRをかざしてください`, "#3498db");
         }
       } else if (currentMode === "生徒から返却") {
         scanOverlay.classList.add('return-mode');
@@ -157,7 +174,7 @@
         scanOverlay.classList.add('admin-del');
         updateStatus("【スキャン中】登録解除する端末のQRコードをかざしてください", "#e67e22");
       }
-      actionBtn.style.display = "none"; // スキャン中はボタンを隠す
+      actionBtn.style.display = "none"; 
     });
 
     function resetSystemState() {
@@ -170,19 +187,19 @@
       if (currentMode === "生徒へ貸出") {
         actionBtn.innerText = "🔍 生徒IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
-        updateStatus("【現在の状況】待機中。上のボタンを押して生徒IDを読み取ってください。", "#3498db");
+        updateStatus("【待機中】上のボタンを押して生徒IDを読み取ってください。", "#3498db");
       } else if (currentMode === "生徒から返却") {
         actionBtn.innerText = "🔍 返却スキャンを開始";
         actionBtn.style.backgroundColor = "#2ecc71";
-        updateStatus("【現在の状況】待機中。上のボタンを押して返却端末を読み取ってください。", "#2ecc71");
+        updateStatus("【待機中】上のボタンを押して返却端末を読み取ってください。", "#2ecc71");
       } else if (currentMode === "端末新規登録") {
         actionBtn.innerText = "🔍 新規登録スキャンを開始";
         actionBtn.style.backgroundColor = "#9b59b6";
-        updateStatus("【管理者モード】上のボタンを押して新規端末を読み取ってください。", "#9b59b6");
+        updateStatus("【管理者】上のボタンを押して新規端末を読み取ってください。", "#9b59b6");
       } else {
         actionBtn.innerText = "🔍 登録解除スキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22";
-        updateStatus("【管理者モード】上のボタンを押して解除する端末を読み取ってください。", "#e67e22");
+        updateStatus("【管理者】上のボタンを押して解除する端末を読み取ってください。", "#e67e22");
       }
     }
 
@@ -216,7 +233,7 @@
 
         if (code) {
           const scannedText = code.data.trim();
-          isScanning = false; // 読んだ瞬間に即座にスキャンループを強制停止
+          isScanning = false; 
           handleScannedData(scannedText);
           return; 
         }
@@ -225,29 +242,25 @@
     }
 
     function handleScannedData(scannedText) {
-      // 読み取り成功のため一度スキャン停止状態の見た目に戻す
       scanOverlay.innerText = "⏸️ スキャン停止中";
       scanOverlay.className = "";
 
       if (currentMode === "生徒へ貸出") {
         if (!savedStudentId) {
-          // STEP 1: 生徒IDの読み取り完了
           if (/^\d{4}$/.test(scannedText)) { 
             savedStudentId = scannedText;
             updateStatus(`👤 生徒 [ID: ${savedStudentId}] をロックしました。\n次の端末スキャンに進むには、下のボタンを押してください。`, "#2c3e50");
             actionBtn.innerText = "🔍 端末QRのスキャンを開始";
-            actionBtn.style.backgroundColor = "#e67e22"; // 2回目は色を変えて注意を促す
+            actionBtn.style.backgroundColor = "#e67e22"; 
             actionBtn.style.display = "block";
           } else {
-            updateStatus("❌ エラー: 生徒の4桁IDコードではありませんでした。最初からやり直してください。", "red");
+            updateStatus("❌ エラー: 生徒の4桁IDではありません。やり直してください。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
-          // STEP 2: 端末番号の読み取り完了
           executeSubmit(currentMode, savedStudentId, scannedText);
         }
       } else {
-        // 返却・登録・解除
         executeSubmit(currentMode, scannedText, "");
       }
     }
@@ -265,25 +278,24 @@
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
         
         if (mode === "生徒へ貸出") {
-          updateStatus(`✅ 貸出完了！\n生徒 [${data1}] へ 端末 [${data2}] を貸出しました。`, "#2ecc71");
+          updateStatus(`✅ 貸出完了！\n生徒 [${data1}] へ 端末 [${data2}]。`, "#2ecc71");
         } else if (mode === "生徒から返却") {
-          updateStatus(`✅ 返却完了！\n端末 [${data1}] の返却処理が完了しました。`, "#2ecc71");
+          updateStatus(`✅ 返却完了！\n端末 [${data1}] の返却。`, "#2ecc71");
         } else if (mode === "端末新規登録") {
-          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加しました。`, "#9b59b6");
+          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] を追加。`, "#9b59b6");
         } else {
-          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を回収済（廃棄枠）にしました。`, "#e67e22");
+          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を回収済化。`, "#e67e22");
         }
         
         fetchStockInfo();
 
       } catch (e) {
-        updateStatus("❌ 送信に失敗しました。電波状況を確認してください。\n" + e.message, "red");
+        updateStatus("❌ 送信失敗:\n" + e.message, "red");
       }
 
-      // 3.5秒後に完全初期状態に戻す
       setTimeout(() => {
         resetSystemState();
-      }, 3500);
+      }, 3000);
     }
 
     function fetchStockInfo() {
@@ -297,8 +309,6 @@
         
         pcEl.innerText = data.pc + " 台";
         batEl.innerText = data.battery + " 個";
-        pcEl.style.color = "#2c3e50";
-        batEl.style.color = "#2c3e50";
         
         if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
