@@ -233,23 +233,41 @@
     }
 
     // 在庫状況をスプレッドシートから非同期取得する関数
+// 【対策版】在庫状況をスプレッドシートから安全に非同期取得する関数
     async function fetchStockInfo() {
       if (!STOCK_API_URL) return;
+      
+      const pcEl = document.getElementById('stock-pc');
+      const batEl = document.getElementById('stock-battery');
+      
       try {
-        const response = await fetch(STOCK_API_URL);
+        // redirect: "follow" を追加して、Google特有のリダイレクトを強制的に追いかけさせます
+        const response = await fetch(STOCK_API_URL, { 
+          method: "GET",
+          redirect: "follow" 
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTPエラー! ステータス: ${response.status}`);
+        }
+        
         const data = await response.json();
         
-        const pcEl = document.getElementById('stock-pc');
-        const batEl = document.getElementById('stock-battery');
-        
+        // 画面の文字を更新
         pcEl.innerText = data.pc + " 台";
         batEl.innerText = data.battery + " 個";
         
-        // 残数が少なくなったら赤字にする演出（フールプルーフ）
+        // 残数が少なくなったら赤字にする演出
         if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
+        
       } catch (e) {
-        console.log("在庫情報の取得に失敗しました。");
+        console.error("在庫情報の取得に失敗:", e);
+        // 万が一通信エラーが起きた場合は、画面の表示をエラーに変えて視認できるようにします
+        pcEl.innerText = "エラー";
+        batEl.innerText = "エラー";
+        pcEl.style.color = "red";
+        batEl.style.color = "red";
       }
     }
 
