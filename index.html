@@ -6,62 +6,31 @@
   <title>生徒用Chromebook等 貸出管理システム</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    /* 画面全体を1画面に固定し、スクロールを禁止 */
-    html, body { 
-      height: 100%; margin: 0; padding: 0; overflow: hidden; 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f4f6f9; color: #333;
-    }
-    
-    /* 縦方向に要素をきれいに等間隔配分するコンテナ */
-    .app-container {
-      display: flex; flex-direction: column;
-      height: 100%; max-width: 440px; margin: 0 auto; padding: 10px; box-sizing: border-box;
-    }
-
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f4f6f9; color: #333; }
+    .app-container { display: flex; flex-direction: column; height: 100%; max-width: 440px; margin: 0 auto; padding: 10px; box-sizing: border-box; }
     h2 { margin: 2px 0 8px 0; color: #2c3e50; font-size: 18px; text-align: center; }
-    
-    /* モード選択ボタン（高さを抑えてコンパクトに） */
     .mode-container { display: flex; gap: 6px; margin-bottom: 8px; }
     .mode-container input { display: none; }
-    .mode-container label {
-      flex: 1; text-align: center; padding: 10px 2px; font-size: 12px; font-weight: bold; 
-      cursor: pointer; border: 2px solid #bdc3c7; border-radius: 6px; background-color: #fff; transition: all 0.2s;
-    }
+    .mode-container label { flex: 1; text-align: center; padding: 10px 2px; font-size: 12px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 6px; background-color: #fff; transition: all 0.2s; }
     input[value="生徒へ貸出"]:checked + label { background-color: #3498db; color: white; border-color: #2980b9; }
     input[value="生徒から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
-    
-    /* カメラエリア：画面の空きスペースに合わせて自動縮小 */
-    #video-container { 
-      position: relative; width: 100%; flex: 1; min-height: 150px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; background-color: #000;
-    }
+    #video-container { position: relative; width: 100%; flex: 1; min-height: 150px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; background-color: #000; }
     video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    
-    /* スキャン停止中のオーバーレイ */
     #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; font-size:16px; font-weight:bold; transition: all 0.3s; z-index: 2; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.2); color: transparent; border: 4px solid #3498db; box-sizing: border-box; }
     #scan-overlay.active.return-mode { border-color: #2ecc71; background: rgba(46, 204, 113, 0.2); }
     #scan-overlay.active.admin-add { border-color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
     #scan-overlay.active.admin-del { border-color: #e67e22; background: rgba(230, 126, 34, 0.2); }
-
-    /* トリガーボタン */
-    #action-btn { width: 100%; margin: 8px 0; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); transition: all 0.1s; display: block; }
-    #action-btn:active { transform: scale(0.98); }
-    
-    /* ステータス表示エリア（高さを可変・フォントサイズ調整） */
+    #action-btn { width: 100%; margin: 8px 0; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: block; }
     #status { margin: 6px 0; padding: 8px; font-size: 14px; font-weight: bold; border-radius: 5px; background-color: #fff; border-left: 5px solid #bdc3c7; box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 54px; line-height: 1.3; }
-    
-    /* 在庫パネル（コンパクト化） */
     .stock-panel { padding: 8px 12px; background: #fff; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 4px; }
     .stock-panel h3 { margin: 0 0 6px 0; font-size: 12px; color: #7f8c8d; text-align: left; border-bottom: 1px solid #ecf0f1; padding-bottom: 3px; }
     .stock-grid { display: flex; justify-content: space-around; }
     .stock-item { text-align: center; font-size: 12px; }
     .stock-count { font-size: 18px; font-weight: bold; color: #2c3e50; margin-top: 2px; }
     .stock-count.low { color: #e74c3c; }
-    
     #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:14px; z-index: 10; }
   </style>
 </head>
@@ -73,13 +42,10 @@
     <div class="mode-container">
       <input type="radio" id="m-rent" name="mode" value="生徒へ貸出" checked>
       <label for="m-rent">📤 貸出</label>
-      
       <input type="radio" id="m-return" name="mode" value="生徒から返却">
       <label for="m-return">📥 返却</label>
-      
       <input type="radio" id="m-add" name="mode" value="端末新規登録">
       <label for="m-add">➕ 登録</label>
-      
       <input type="radio" id="m-del" name="mode" value="端末登録解除">
       <label for="m-del">❌ 解除</label>
     </div>
@@ -91,9 +57,7 @@
     </div>
 
     <button id="action-btn">🔍 スキャンを開始する</button>
-    
     <canvas id="canvas" style="display:none;"></canvas>
-    
     <div id="status">モードを選択し、ボタンを押して開始してください</div>
 
     <div class="stock-panel">
@@ -117,8 +81,8 @@
     const ENTRY_DATA1 = "entry.1165154720";
     const ENTRY_DATA2 = "entry.1094519910";
 
-    // 💡 ご自身の「デプロイされたウェブアプリのURL」をここに貼り付けてください
-    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbwil9WDT8CVgv5AcurUv_Jpt8eVWPijlSmLdgwqOOeJvaiZYBTVwBXlOe2heH45Mtddpg/exec"; 
+    // 💡 ウェブアプリURLをここに貼り付け
+    const STOCK_API_URL = ""; 
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -143,16 +107,12 @@
       const savedMode = localStorage.getItem('selectedMode');
       if (savedMode) {
         const radio = document.querySelector(`input[value="${savedMode}"]`);
-        if (radio) {
-          radio.checked = true;
-          currentMode = savedMode;
-        }
+        if (radio) { radio.checked = true; currentMode = savedMode; }
       }
     });
 
     actionBtn.addEventListener('click', () => {
       if (isScanning) return; 
-      
       isScanning = true;
       scanOverlay.innerText = "";
       scanOverlay.className = "active";
@@ -160,9 +120,9 @@
       if (currentMode === "生徒へ貸出") {
         scanOverlay.classList.add('rent-mode');
         if (!savedStudentId) {
-          updateStatus("【スキャン中】生徒のID（4桁）をかざしてください", "#3498db");
+          updateStatus("【スキャン中】生徒のID（4桁数字）をかざしてください", "#3498db");
         } else {
-          updateStatus(`【スキャン中】生徒 [ID: ${savedStudentId}] の端末QRをかざしてください`, "#3498db");
+          updateStatus(`【スキャン中】機体QR（通常機・予備機どちらでも可）をかざしてください\n[対象生徒: ${savedStudentId}]`, "#e67e22");
         }
       } else if (currentMode === "生徒から返却") {
         scanOverlay.classList.add('return-mode');
@@ -211,10 +171,7 @@
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
     .then(stream => { 
-      video.srcObject = stream; 
-      overlay.style.display = "none";
-      resetSystemState();
-      requestAnimationFrame(tick);
+      video.srcObject = stream; overlay.style.display = "none"; resetSystemState(); requestAnimationFrame(tick);
     })
     .catch(err => { 
       overlay.innerText = "❌ カメラエラー: " + err.message;
@@ -224,16 +181,21 @@
     function tick() {
       if (isScanning && video.currentTime > 0 && video.videoWidth > 0 && video.videoHeight > 0) {
         const context = canvas.getContext('2d');
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight; canvas.width = video.videoWidth;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
 
         if (code) {
           const scannedText = code.data.trim();
-          isScanning = false; 
+          
+          // 【核心のバグ修正】2回目のスキャン待ちの時、映ったデータが1回目と同じ「生徒ID」だった場合は、完全に無視してカメラを継続する
+          if (currentMode === "生徒へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
+            requestAnimationFrame(tick);
+            return;
+          }
+          
+          isScanning = false; // 正常な新しいコードを検知したら即座にロック
           handleScannedData(scannedText);
           return; 
         }
@@ -249,7 +211,7 @@
         if (!savedStudentId) {
           if (/^\d{4}$/.test(scannedText)) { 
             savedStudentId = scannedText;
-            updateStatus(`👤 生徒 [ID: ${savedStudentId}] をロックしました。\n次の端末スキャンに進むには、下のボタンを押してください。`, "#2c3e50");
+            updateStatus(`👤 生徒 [ID: ${savedStudentId}] をロックしました。\n次に貸し出す【機体（通常・予備）のQR】を準備し、下のボタンを押してください。`, "#2c3e50");
             actionBtn.innerText = "🔍 端末QRのスキャンを開始";
             actionBtn.style.backgroundColor = "#e67e22"; 
             actionBtn.style.display = "block";
@@ -276,59 +238,38 @@
 
       try {
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
-        
         if (mode === "生徒へ貸出") {
-          updateStatus(`✅ 貸出完了！\n生徒 [${data1}] へ 端末 [${data2}]。`, "#2ecc71");
+          updateStatus(`✅ 貸出完了！\n生徒 [${data1}] へ 端末 [${data2}] を紐付けました。`, "#2ecc71");
         } else if (mode === "生徒から返却") {
-          updateStatus(`✅ 返却完了！\n端末 [${data1}] の返却。`, "#2ecc71");
+          updateStatus(`✅ 返却完了！\n端末 [${data1}] を回収状態に戻しました。`, "#2ecc71");
         } else if (mode === "端末新規登録") {
-          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] を追加。`, "#9b59b6");
+          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
         } else {
-          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を回収済化。`, "#e67e22");
+          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
         }
-        
         fetchStockInfo();
-
       } catch (e) {
         updateStatus("❌ 送信失敗:\n" + e.message, "red");
       }
-
-      setTimeout(() => {
-        resetSystemState();
-      }, 3000);
+      setTimeout(() => { resetSystemState(); }, 3000);
     }
 
     function fetchStockInfo() {
       if (!STOCK_API_URL) return;
-      
       const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-      
       window[callbackName] = function(data) {
         const pcEl = document.getElementById('stock-pc');
         const batEl = document.getElementById('stock-battery');
-        
-        pcEl.innerText = data.pc + " 台";
-        batEl.innerText = data.battery + " 個";
-        
+        pcEl.innerText = data.pc + " 台"; batEl.innerText = data.battery + " 個";
         if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
         if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
-        
-        delete window[callbackName];
-        document.getElementById(callbackName).remove();
+        delete window[callbackName]; document.getElementById(callbackName).remove();
       };
-      
-      const script = document.createElement('script');
-      script.id = callbackName;
+      const script = document.createElement('script'); script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
-      
-      script.onerror = function() {
-        document.getElementById('stock-pc').innerText = "エラー";
-        document.getElementById('stock-battery').innerText = "エラー";
-      };
-      
+      script.onerror = function() { document.getElementById('stock-pc').innerText = "エラー"; document.getElementById('stock-battery').innerText = "エラー"; };
       document.body.appendChild(script);
     }
-
     window.onload = () => { fetchStockInfo(); };
   </script>
 </body>
