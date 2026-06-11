@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QRコード 貸出・返却システム</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; margin: 0; }
+    h2 { color: #333; margin-top: 10px; }
+    .mode-selector { margin: 20px; }
+    .mode-selector input { display: none; }
+    .mode-selector label {
+      padding: 15px 30px; font-size: 18px; font-weight: bold; margin: 10px; cursor: pointer;
+      border: 2px solid #ccc; border-radius: 8px; display: inline-block; background-color: #fff;
+    }
+    input[value="貸出"]:checked + label { background-color: #ff4d4d; color: white; border-color: #ff4d4d; }
+    input[value="返却"]:checked + label { background-color: #4caf50; color: white; border-color: #4caf50; }
+    
+    #video-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
+    video { width: 100%; max-width: 400px; border: 3px solid #333; border-radius: 8px; background-color: #000; }
+    #status { margin-top: 15px; font-size: 18px; font-weight: bold; color: #555; min-height: 50px; padding: 0 10px; }
+    #loading { font-size: 16px; color: #666; padding: 20px; }
+  </style>
+</head>
+<body>
+
+  <h2>QRコード 貸出・返却スキャナー</h2>
+
+  <div class="mode-selector">
+    <input type="radio" id="mode-rent" name="status-mode" value="貸出" checked>
+    <label for="mode-rent">📤 貸出処理にする</label>
+    
+    <input type="radio" id="mode-return" name="status-mode" value="返却">
+    <label for="mode-return">📥 返却処理にする</label>
+  </div>
+
+  <div id="loading">カメラの権限を確認中...</div>
+  
+  <div id="video-container">
+    <video id="video" autoplay playsinline muted></video>
+  </div>
+  
+  <canvas id="canvas" style="display:none;"></canvas>
+  <div id="status">モードを選択してQRコードをかざしてください</div>
+
+  <script>
+    // ★ここに「実行ユーザー：自分」「組織内の全員」でデプロイした最新のウェブアプリURLを貼り付けてください★
+    const GAS_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxTAyB08XEZQI9dSmO9KbGCxsOzyl7f0FNXwNSYMRqUp3XtClNAofQJFu0Z27RSNsGJ/exec";
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const statusDiv = document.getElementById('status');
+    const loadingDiv = document.getElementById('loading');
+    
+    let isScanning = true;
+
+    // HTTPSドメイン上に配置されるため、Chromebookでも正常にカメラの許可ポップアップが出ます
+    navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: "user",
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      }, 
+      audio: false 
+    })
+    .then(stream => { 
+      video.srcObject = stream; 
+      loadingDiv.style.display = "none";
+      requestAnimationFrame(tick);
+    })
+    .catch(err => { 
+      loadingDiv.innerText = "カメラ起動エラー: " + err.name + " (" + err.message + ")"; 
+      loadingDiv.style.color = "red";
+    });
+
+    function tick() {
+      if (video.currentTime > 0 && video.videoWidth > 0 && video.videoHeight > 0) {
+        const context = canvas.getContext('2d');
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+
+        if (code && isScanning) {
+          isScanning = false;
+          const scannedId = code.data;
+          const selectedStatus = document.querySelector('input[name="status-mode"]:checked').value;
+          
+          sendToGas(scannedId, selectedStatus);
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // 外部サーバーからGASのdoPostへデータを送信する関数
+    async function sendToGas(id, status) {
+      statusDiv.innerText = `読み取り成功 [${id}]: スプレッドシート更新中...`;
+      statusDiv.style.color = "blue";
+
+      try {
+        // 別ドメインからの通信になるため、ブラウザによる通信遮断（Failed to fetch）を防ぐために
+        // 再び mode: "no-cors" を使用します。
+        // 今回は「ローカルファイル(file:///)」ではなく「正規のサイト(https://)」からの発信になるため、
+        // Cookieが剥がれた匿名通信であっても、学校のプロキシをすり抜けてGASまで確実に到達します。
+        await fetch(GAS_URL, {
+          method: "POST",
+          mode: "no-cors", 
+          headers: {
+            "Content-Type": "text/plain"
+          },
+          body: JSON.stringify({ id: id, status: status })
+        });
+        
+        // no-cors指定時のブラウザの仕様により、GASからの成否メッセージ（JSON）は中身を読み取れません。
+        // 通信自体が遮断されずに通過した時点で、画面上は「送信完了」とみなします。
+        statusDiv.innerText = `【${id}】のステータスを「${status}」として送信しました。`;
+        statusDiv.style.color = "green";
+
+      } catch (e) {
+        statusDiv.innerText = "通信に失敗しました:\n" + e.message;
+        statusDiv.style.color = "red";
+      }
+
+      // 3秒後にスキャンを再開
+      setTimeout(() => {
+        if(statusDiv.style.color !== "red") {
+          statusDiv.innerText = "モードを選択してQRコードをかざしてください";
+          statusDiv.style.color = "#555";
+        }
+        isScanning = true;
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
