@@ -1,82 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>QRコード 貸出・返却システム</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生徒用Chromebook等 貸出管理システム</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; margin: 0; }
-    h2 { color: #333; margin-top: 10px; }
-    .mode-selector { margin: 20px; }
-    .mode-selector input { display: none; }
-    .mode-selector label {
-      padding: 15px 30px; font-size: 18px; font-weight: bold; margin: 10px; cursor: pointer;
-      border: 2px solid #ccc; border-radius: 8px; display: inline-block; background-color: #fff;
-    }
-    input[value="貸出"]:checked + label { background-color: #ff4d4d; color: white; border-color: #ff4d4d; }
-    input[value="返却"]:checked + label { background-color: #4caf50; color: white; border-color: #4caf50; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; margin: 0; color: #333; }
+    h2 { margin-top: 10px; color: #2c3e50; font-size: 24px; }
     
-    #video-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
-    video { width: 100%; max-width: 400px; border: 3px solid #333; border-radius: 8px; background-color: #000; }
-    #status { margin-top: 15px; font-size: 18px; font-weight: bold; color: #555; min-height: 50px; padding: 0 10px; }
-    #loading { font-size: 16px; color: #666; padding: 20px; white-space: pre-wrap; }
+    /* モードセレクターのスタイリング */
+    .mode-container { display: flex; flex-wrap: wrap; justify-content: center; max-width: 600px; margin: 15px auto; gap: 10px; }
+    .mode-container input { display: none; }
+    .mode-container label {
+      flex: 1; min-width: 120px; padding: 12px 10px; font-size: 15px; font-weight: bold; 
+      cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s;
+    }
+    input[value="生徒へ貸出"]:checked + label { background-color: #3498db; color: white; border-color: #2980b9; }
+    input[value="生徒から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
+    input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
+    input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
+    
+    /* カメラエリア */
+    #video-container { position: relative; width: 100%; max-width: 440px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 10px; overflow: hidden; background-color: #000; }
+    video { width: 100%; aspect-ratio: 4/3; display: block; transform: scaleX(1); } /* 必要に応じて鏡像反転を削除 */
+    
+    /* ステータス・案内表示 */
+    #status { margin: 15px auto; max-width: 440px; min-height: 70px; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 6px; background-color: #fff; border-left: 5px solid #bdc3c7; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+    
+    /* 在庫状況パネル */
+    .stock-panel { max-width: 440px; margin: 20px auto; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .stock-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #7f8c8d; text-align: left; border-bottom: 1px solid #ecf0f1; padding-bottom: 5px; }
+    .stock-grid { display: flex; justify-content: space-around; }
+    .stock-item { text-align: center; }
+    .stock-count { font-size: 24px; font-weight: bold; color: #2c3e50; margin-top: 5px; }
+    .stock-count.low { color: #e74c3c; }
+
+    #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; }
   </style>
 </head>
 <body>
 
-  <h2>QRコード 貸出・返却スキャナー</h2>
+  <h2>Chromebook等 貸出管理システム</h2>
 
-  <div class="mode-selector">
-    <input type="radio" id="mode-rent" name="status-mode" value="貸出" checked>
-    <label for="mode-rent">📤 貸出処理にする</label>
+  <div class="mode-container">
+    <input type="radio" id="m-rent" name="mode" value="生徒へ貸出" checked>
+    <label for="m-rent">📤 生徒へ貸出</label>
     
-    <input type="radio" id="mode-return" name="status-mode" value="返却">
-    <label for="mode-return">📥 返却処理にする</label>
+    <input type="radio" id="m-return" name="mode" value="生徒から返却">
+    <label for="m-return">📥 生徒から返却</label>
+    
+    <input type="radio" id="m-add" name="mode" value="端末新規登録">
+    <label for="m-add">➕ 端末登録</label>
+    
+    <input type="radio" id="m-del" name="mode" value="端末登録解除">
+    <label for="m-del">❌ 登録解除</label>
   </div>
 
-  <div id="loading">カメラの権限を確認中...</div>
-  
   <div id="video-container">
     <video id="video" autoplay playsinline muted></video>
+    <div id="loading-overlay">カメラ初期化中...</div>
   </div>
   
   <canvas id="canvas" style="display:none;"></canvas>
-  <div id="status">モードを選択してQRコードをかざしてください</div>
+  
+  <div id="status" id="status-box">モードを選択してQRコードをかざしてください</div>
+
+  <div class="stock-panel">
+    <h3>現在の貸出可能在庫（予備・パワバ）</h3>
+    <div class="stock-grid">
+      <div class="stock-item">
+        <div>💻 予備機 (9000番台)</div>
+        <div class="stock-count" id="stock-pc">---</div>
+      </div>
+      <div class="stock-item">
+        <div>🔋 モバイルバッテリー</div>
+        <div class="stock-count" id="stock-battery">---</div>
+      </div>
+    </div>
+  </div>
 
   <script>
-    // 【文字盤の強制表示機能】万が一JavaScriptのどこかで構文エラーがあれば画面に直接吐き出します
-    window.onerror = function(msg, url, line) {
-      const loadingDiv = document.getElementById('loading');
-      if (loadingDiv) {
-        loadingDiv.innerText = `❌ スクリプトエラー発生\nエラー内容: ${msg}\n発生行数: ${line}行目`;
-        loadingDiv.style.color = "red";
-      }
-      return false;
-    };
+    // Googleフォーム定義情報
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
+    const ENTRY_MODE = "entry.866648275";
+    const ENTRY_DATA1 = "entry.1165154720";
+    const ENTRY_DATA2 = "entry.1094519910";
 
-    // 先ほど提示していただいた正しい公開用URLを設定
-    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdSigMAy7duhn1rkc5DKFuN-qTDdvBUfsf1F1A8CPVaMLXv5g/formResponse";
+    // スプレッドシート在庫取得用APIのURL（※のちほどGAS側で生成したURLをここに貼り付けます）
+    const STOCK_API_URL = ""; 
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const statusDiv = document.getElementById('status');
-    const loadingDiv = document.getElementById('loading');
+    const overlay = document.getElementById('loading-overlay');
     
     let isScanning = true;
+    let currentMode = "生徒へ貸出";
+    
+    // 2回連続スキャン用の一時保存変数
+    let savedStudentId = ""; 
 
-    // カメラの起動処理
-    navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, 
-      audio: false 
-    })
+    // ラジオボタンの変更監視
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        currentMode = e.target.value;
+        resetScanState();
+      });
+    });
+
+    // スキャン状態の初期化
+    function resetScanState() {
+      savedStudentId = "";
+      isScanning = true;
+      if (currentMode === "生徒へ貸出") {
+        updateStatus("【STEP 1】 生徒のID（4桁数字）のQRコードをかざしてください", "#3498db");
+      } else if (currentMode === "生徒から返却") {
+        updateStatus("返却する端末（本体/アダプタ/パワバ）のQRコードをかざしてください", "#2ecc71");
+      } else if (currentMode === "端末新規登録") {
+        updateStatus("【管理者モード】 新規登録する端末のQRコードをかざしてください", "#9b59b6");
+      } else {
+        updateStatus("【管理者モード】 登録解除（回収済化）する端末のQRコードをかざしてください", "#e67e22");
+      }
+    }
+
+    function updateStatus(text, color) {
+      statusDiv.innerText = text;
+      statusDiv.style.borderLeftColor = color;
+      statusDiv.style.color = color;
+    }
+
+    // カメラ起動
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
     .then(stream => { 
       video.srcObject = stream; 
-      loadingDiv.style.display = "none";
+      overlay.style.display = "none";
+      resetScanState();
       requestAnimationFrame(tick);
     })
     .catch(err => { 
-      loadingDiv.innerText = "❌ カメラ起動エラー: " + err.name + " (" + err.message + ")"; 
-      loadingDiv.style.color = "red";
+      overlay.innerText = "❌ カメラエラー: " + err.message;
+      updateStatus("カメラが起動できません。権限を確認してください。", "red");
     });
 
     function tick() {
@@ -87,54 +151,110 @@
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        });
+        const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
 
         if (code && isScanning) {
-          isScanning = false;
-          const scannedId = code.data;
-          const selectedStatus = document.querySelector('input[name="status-mode"]:checked').value;
-          
-          sendToForm(scannedId, selectedStatus);
+          isScanning = false; // 二重読み込み防止
+          handleScannedData(code.data.trim());
+          return; // ループを一旦抜けて制御
         }
       }
       requestAnimationFrame(tick);
     }
 
-    // Googleフォームの受付窓口にデータを送信する関数
-    async function sendToForm(id, status) {
-      statusDiv.innerText = `読み取り成功 [${id}]: フォーム経由で送信中...`;
-      statusDiv.style.color = "blue";
+    // スキャンしたデータの振り分けロジック
+    function handleScannedData(scannedText) {
+      // 1. 生徒へ貸出モード（2回連続スキャン方式）
+      if (currentMode === "生徒へ貸出") {
+        if (!savedStudentId) {
+          // 1回目の読み取り：生徒IDであるべき（4桁の数字を想定、適宜正規表現を変更してください）
+          if (/^\d{4}$/.test(scannedText) || scannedText.startsWith("9")) { 
+            savedStudentId = scannedText;
+            updateStatus(`生徒 [ID: ${savedStudentId}] を認識しました。\n【STEP 2】 渡す端末のQRコードをかざしてください。`, "#3498db");
+            // 1秒後に次のスキャンを受け付ける（手の離れを待つフールプルーフ）
+            setTimeout(() => { isScanning = true; requestAnimationFrame(tick); }, 1200);
+          } else {
+            updateStatus("❌ エラー: 先に生徒の4桁IDコードを読み取ってください。", "red");
+            setTimeout(() => { resetScanState(); requestAnimationFrame(tick); }, 2000);
+          }
+        } else {
+          // 2回目の読み取り：端末番号（1回目と同じデータが読まれてしまったら無視するフールプルーフ）
+          if (scannedText === savedStudentId) {
+            isScanning = true;
+            requestAnimationFrame(tick);
+            return;
+          }
+          // 送信処理へ
+          executeSubmit(currentMode, savedStudentId, scannedText);
+        }
+      } 
+      // 2. それ以外のモード（1回スキャン方式：返却・登録・解除）
+      else {
+        // 返却・登録・解除はデータ1に端末番号、データ2は空欄で送信
+        executeSubmit(currentMode, scannedText, "");
+      }
+    }
 
+    // Googleフォームへの送信実行
+    async function executeSubmit(mode, data1, data2) {
+      updateStatus("⏳ データを送信中...", "#7f8c8d");
+      
       const formData = new FormData();
-      formData.append("entry.264257887", id);     // 管理番号
-      formData.append("entry.2097412750", status); // ステータス
+      formData.append(ENTRY_MODE, mode);
+      formData.append(ENTRY_DATA1, data1);
+      formData.append(ENTRY_DATA2, data2);
 
       try {
-        await fetch(FORM_URL, {
-          method: "POST",
-          mode: "no-cors",
-          body: formData
-        });
-
-        statusDiv.innerText = `【${id}】のステータスを「${status}」として送信しました。`;
-        statusDiv.style.color = "green";
+        await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
+        
+        // 画面上への完了通知（フールプルーフ：視覚的にわかりやすく）
+        if (mode === "生徒へ貸出") {
+          updateStatus(`✅ 送信完了！\n生徒 [${data1}] へ 端末 [${data2}] を貸出しました。`, "#2ecc71");
+        } else if (mode === "生徒から返却") {
+          updateStatus(`✅ 送信完了！\n端末 [${data1}] の返却処理を受け付けました。`, "#2ecc71");
+        } else if (mode === "端末新規登録") {
+          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加しました。`, "#9b59b6");
+        } else {
+          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を回収済（廃棄枠）にしました。`, "#e67e22");
+        }
+        
+        // 送信が成功したら在庫状況を再取得（APIURLがセットされている場合）
+        fetchStockInfo();
 
       } catch (e) {
-        statusDiv.innerText = "フォーム送信に失敗しました:\n" + e.message;
-        statusDiv.style.color = "red";
+        updateStatus("❌ 送信に失敗しました。電波状況を確認してください。\n" + e.message, "red");
       }
 
-      // 3秒後にスキャンを再開
+      // 3.5秒後に待機状態に戻す（処理完了の確認時間を長めに確保）
       setTimeout(() => {
-        if(statusDiv.style.color !== "red") {
-          statusDiv.innerText = "モードを選択してQRコードをかざしてください";
-          statusDiv.style.color = "#555";
-        }
-        isScanning = true;
-      }, 3000);
+        resetScanState();
+        requestAnimationFrame(tick);
+      }, 3500);
     }
+
+    // 在庫状況をスプレッドシートから非同期取得する関数
+    async function fetchStockInfo() {
+      if (!STOCK_API_URL) return;
+      try {
+        const response = await fetch(STOCK_API_URL);
+        const data = await response.json();
+        
+        const pcEl = document.getElementById('stock-pc');
+        const batEl = document.getElementById('stock-battery');
+        
+        pcEl.innerText = data.pc + " 台";
+        batEl.innerText = data.battery + " 個";
+        
+        // 残数が少なくなったら赤字にする演出（フールプルーフ）
+        if(data.pc <= 2) pcEl.classList.add('low'); else pcEl.classList.remove('low');
+        if(data.battery <= 2) batEl.classList.add('low'); else batEl.classList.remove('low');
+      } catch (e) {
+        console.log("在庫情報の取得に失敗しました。");
+      }
+    }
+
+    // ページ読み込み時に一度在庫をチェック
+    window.onload = () => { fetchStockInfo(); };
   </script>
 </body>
 </html>
