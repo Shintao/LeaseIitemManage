@@ -425,7 +425,7 @@ function playSound(type) {
         });
         gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
       } else if (type === "success") {
-        gain.gain.value = 0.5; // ★ここだけ大きく設定
+        gain.gain.value = 0.8; // ★ここだけ大きく設定
         osc.type = 'sine';
         osc.frequency.setValueAtTime(523, audioCtx.currentTime);
         osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
