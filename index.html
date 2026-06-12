@@ -398,10 +398,14 @@
       document.body.appendChild(script);
     }
 
-    function playSound(type) {
+function playSound(type) {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
+      
+      // 音量調整：gain.gain.valueを 0.1 ～ 0.3 程度にするとより大きく聞こえます
+      gain.gain.value = 0.3; 
+      
       osc.connect(gain);
       gain.connect(audioCtx.destination);
 
@@ -423,12 +427,14 @@
         gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
       } else if (type === "success") {
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
-        osc.frequency.setValueAtTime(783, audioCtx.currentTime + 0.4);
+        // ジングルの各音を少し強調します
+        osc.frequency.setValueAtTime(523, audioCtx.currentTime); // ド
+        osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2); // ミ
+        osc.frequency.setValueAtTime(783, audioCtx.currentTime + 0.4); // ソ
         osc.start();
-        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.8);
-        osc.stop(audioCtx.currentTime + 0.8);
+        // 減衰を少し緩やかにして、残響感を少し残すことで存在感をアップ
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1.0);
+        osc.stop(audioCtx.currentTime + 1.0);
       }
     }
     window.onload = () => { fetchStockInfo(); };
