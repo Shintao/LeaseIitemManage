@@ -187,6 +187,7 @@
     const ENTRY_DATA2 = "entry.1094519910";
     const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxGmBTg8T4quolzCtotdF3j_V0iWTpd7O2wvbsZ0i3saM3pAPekDj98npUVaGCqe2oMFQ/exec"; 
 
+    // DOM要素の取得
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const statusDiv = document.getElementById('status');
@@ -220,6 +221,7 @@
       debugConsole.scrollTop = debugConsole.scrollHeight;
     }
 
+    // モード切替の監視
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         currentMode = e.target.value;
@@ -229,7 +231,11 @@
       });
     });
 
+    // 読み込み完了時のエントリーポイント
     window.onload = () => {
+      log("DOMロード完了。初期設定を開始します。");
+      
+      // モードの復元
       const savedMode = localStorage.getItem('selectedMode');
       if (savedMode) {
         let targetValue = savedMode;
@@ -240,13 +246,24 @@
         if (radio) { radio.checked = true; currentMode = targetValue; }
       }
       
+      // カメラ向きの復元
       const savedCamera = localStorage.getItem('selectedCameraFacing');
       if (savedCamera) {
         currentFacingMode = savedCamera;
       }
       
+      // 1. 在庫情報の取得
       fetchStockInfo();
-      startCamera(currentFacingMode);
+      
+      // 2. システム表示状態を安全に初期化
+      resetSystemState();
+      
+      // 3. 最後にカメラをスタンドアロンで起動（例外が起きても他を殺さない）
+      try {
+        startCamera(currentFacingMode);
+      } catch(e) {
+        log(`❌ カメラ初期化の呼び出しに失敗: ${e.message}`);
+      }
     };
 
     function startCamera(facingMode) {
@@ -268,8 +285,7 @@
         currentStream = stream;
         video.srcObject = stream; 
         if (overlay) overlay.style.display = "none"; 
-        log("✅ カメラの起動に成功しました。");
-        resetSystemState();
+        log("✅ カメラの映像ストリームの取得に成功しました。");
       })
       .catch(err => { 
         if (overlay) {
@@ -369,226 +385,4 @@
       cancelBtn.addEventListener('click', () => {
         log("🛑 中断ボタンが押されました。初期状態にリセットします。");
         resetSystemState();
-        fetchStockInfo(); 
-      });
-    }
-
-    function resetSystemState() {
-      isScanning = false;
-      savedStudentId = "";
-      savedStudentName = "";
-      if (scanOverlay) {
-        scanOverlay.innerText = "⏸️ スキャン停止中";
-        scanOverlay.className = "";
-      }
-      actionBtn.disabled = false;
-      if (cancelBtn) cancelBtn.style.display = "none";
-      
-      if (currentMode === "利用者へ貸出") {
-        actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
-        actionBtn.style.backgroundColor = "#3498db";
-        if (manualBtn) manualBtn.style.display = "block"; 
-        updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
-      } else {
-        if (manualBtn) manualBtn.style.display = "none"; 
-        if (currentMode === "利用者から返却") {
-          actionBtn.innerText = "🔍 返却スキャンを開始";
-          actionBtn.style.backgroundColor = "#2ecc71";
-          updateStatus("【返却モード：待機中】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
-        } else if (currentMode === "端末新規登録") {
-          actionBtn.innerText = "🔍 新規登録スキャンを開始";
-          actionBtn.style.backgroundColor = "#9b59b6";
-          updateStatus("【管理者：端末登録マスター】\n下のボタンを押して新規登録スキャンを開始してください。", "#9b59b6");
-        } else {
-          actionBtn.innerText = "🔍 登録解除スキャンを開始";
-          actionBtn.style.backgroundColor = "#e67e22";
-          updateStatus("【管理者：端末除籍マスター】\n下のボタンを押して削除するスキャンを開始してください。", "#e67e22");
-        }
-      }
-    }
-
-    function updateStatus(text, color) {
-      if (!statusDiv) return;
-      statusDiv.style.borderLeftColor = color;
-      statusDiv.style.color = color;
-      statusDiv.innerText = text;
-    }
-
-    function tick() {
-      if (!isScanning) return; 
-
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        const context = canvas.getContext('2d');
-        canvas.height = video.videoHeight; canvas.width = video.videoWidth;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
-
-        if (code) {
-          const scannedText = code.data.trim();
-          playSound("read"); 
-          log(`🎯 QR検出成功: [${scannedText}]`);
-          
-          if (currentMode === "利用者へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
-            log("残像検知: 1回目の利用者IDがまだ映っているためスルーします");
-            requestAnimationFrame(tick);
-            return;
-          }
-          
-          isScanning = false; 
-          handleScannedData(scannedText);
-          return; 
-        }
-      }
-      requestAnimationFrame(tick);
-    }
-
-    function handleScannedData(scannedText) {
-      if (scanOverlay) {
-        scanOverlay.innerText = "⏸️ スキャン停止中";
-        scanOverlay.className = "";
-      }
-      if (manualBtn) manualBtn.style.display = "none"; 
-
-      if (currentMode === "利用者へ貸出") {
-        if (!savedStudentId) {
-          if (/^\d{4}$/.test(scannedText)) { 
-            fetchUserName(scannedText);
-          } else {
-            playSound("error"); 
-            log(`❌ 判定エラー: [${scannedText}] は4桁の数字ではありません。`);
-            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
-            setTimeout(() => { resetSystemState(); }, 2500);
-          }
-        } else {
-          log(`🚀 送信準備: 利用者 [${savedStudentName} (${savedStudentId})] ➔ 端末 [${scannedText}]`);
-          executeSubmit(currentMode, savedStudentId, scannedText);
-        }
-      } else {
-        log(`🚀 送信準備: モード [${currentMode}] ➔ 端末 [${scannedText}]`);
-        executeSubmit(currentMode, scannedText, "");
-      }
-    }
-
-    function fetchUserName(id) {
-      updateStatus("🔍 利用者マスターを照会中...", "#7f8c8d");
-      
-      const cleanId = encodeURIComponent(String(id).toUpperCase().trim());
-      const callbackName = 'jsonp_name_' + Math.round(100000 * Math.random());
-      
-      window[callbackName] = function(data) {
-        savedStudentId = String(id).trim(); 
-        savedStudentName = data.name;
-        log(`✅ 利用者特定: ID [${savedStudentId}] ➔ 名前: [${savedStudentName}]`);
-        
-        updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機器のQR】を正面に準備し、下のボタンを押してください。`, "#2c3e50");
-        actionBtn.innerText = "🔍 端末QRのスキャンを開始";
-        actionBtn.style.backgroundColor = "#e67e22"; 
-        actionBtn.disabled = false;
-        if (manualBtn) manualBtn.style.display = "none"; 
-        if (cancelBtn) cancelBtn.style.display = "block";
-        
-        delete window[window[callbackName]];
-        const targetScript = document.getElementById(callbackName);
-        if(targetScript) targetScript.remove();
-      };
-      
-      const script = document.createElement('script');
-      script.id = callbackName;
-      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + cleanId + '&callback=' + callbackName;
-      script.onerror = function() {
-        playSound("error"); 
-        savedStudentId = String(id).trim();
-        savedStudentName = "名前取得エラー(未登録の可能性)";
-        updateStatus(`👤 利用者ID: [${savedStudentId}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、上のボタンを押してください。`, "#2c3e50");
-        actionBtn.innerText = "🔍 端末QRのスキャンを開始";
-        actionBtn.style.backgroundColor = "#e67e22"; 
-        actionBtn.disabled = false;
-        if (manualBtn) manualBtn.style.display = "none";
-      };
-      document.body.appendChild(script);
-    }
-
-    async function executeSubmit(mode, data1, data2) {
-      updateStatus("⏳ データを送信中...", "#7f8c8d");
-      if (cancelBtn) cancelBtn.style.display = "none";
-      
-      const safeData1 = (data1 === "" || data1 === undefined || data1 === null) ? " " : data1;
-      const safeData2 = (data2 === "" || data2 === undefined || data2 === null) ? " " : data2;
-
-      const formData = new FormData();
-      formData.append(ENTRY_MODE, mode === "利用者へ貸出" ? "生徒へ貸出" : mode === "利用者から返却" ? "生徒から返却" : mode);
-      formData.append(ENTRY_DATA1, safeData1);
-      formData.append(ENTRY_DATA2, safeData2);
-
-      try {
-        await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
-        playSound("success"); 
-        log(`✅ Googleフォームへのデータ送信を完了しました。`);
-        
-        if (mode === "利用者へ貸出") {
-          updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
-        } else if (mode.indexOf("返却") !== -1) {
-          updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
-        } else if (mode.indexOf("新規") !== -1 || mode.indexOf("登録") !== -1) {
-          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
-        } else {
-          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
-        }
-        
-        log("⏳ スプレッドシートの同期完了を待っています（3秒間）...");
-        setTimeout(() => {
-          log("🔄 サーバーの更新が完了したため、最新の在庫数を取得します。");
-          fetchStockInfo();
-          resetSystemState();
-        }, 3000);
-      } catch (e) {
-        playSound("error"); 
-        log(`❌ 送信エラーが発生しました: ${e.message}`);
-        updateStatus("❌ 送信失敗:\n" + e.message, "red");
-        setTimeout(() => { resetSystemState(); }, 3000);
-      }
-    }
-
-    function fetchStockInfo() {
-      if (!STOCK_API_URL) return;
-      const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-      window[callbackName] = function(data) {
-        const pcEl = document.getElementById('stock-pc');
-        const batEl = document.getElementById('stock-battery');
-        if(pcEl) pcEl.innerText = data.pc + " 台"; 
-        if(batEl) batEl.innerText = data.battery + " 個";
-        if(pcEl && data.pc <= 2) pcEl.classList.add('low'); else if(pcEl) pcEl.classList.remove('low');
-        if(batEl && data.battery <= 2) batEl.classList.add('low'); else if(batEl) batEl.classList.remove('low');
-        log(`📊 最新在庫に同期しました。[予備:${data.pc}台 / バッテリー:${data.battery}個]`);
-        delete window[window[callbackName]]; 
-        const sScript = document.getElementById(callbackName);
-        if(sScript) sScript.remove();
-      };
-      const script = document.createElement('script'); 
-      script.id = callbackName;
-      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
-      script.onerror = function() { 
-        if(document.getElementById('stock-pc')) document.getElementById('stock-pc').innerText = "エラー"; 
-        if(document.getElementById('stock-battery')) document.getElementById('stock-battery').innerText = "エラー"; 
-      };
-      document.body.appendChild(script);
-    }
-
-    function playSound(type) {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        if (type === "read") {
-          gain.gain.value = 0.2; 
-          osc.frequency.value = 880;
-          osc.start();
-          gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
-          osc.stop(audioCtx.currentTime + 0.1);
-        } else if (type === "error") {
-          gain.gain.value = 0.2;
+        fetchStockInfo
