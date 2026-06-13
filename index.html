@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（手入力暴発修正版）</title>
+  <title>Chromebook等 貸出管理システム（空送信完全根絶版）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
@@ -105,16 +105,16 @@
     <div class="main-layout">
       <div class="left-panel">
         <div id="video-container">
-          <button id="camera-switch-btn" title="カメラの向きを切り替え">🔄</button>
+          <button id="camera-switch-btn" type="button" title="カメラの向きを切り替え">🔄</button>
           <video id="video" autoplay playsinline muted></video>
           <div id="scan-overlay">⏸️ スキャン停止中</div>
           <div id="loading-overlay">システム準備中...</div>
         </div>
 
         <div class="btn-group">
-          <button id="action-btn">🔍 スキャンを開始する</button>
-          <button id="manual-btn">⌨️ 利用者IDを手入力する</button>
-          <button id="cancel-btn">🛑 スキャンを中断する</button>
+          <button id="action-btn" type="button">🔍 スキャンを開始する</button>
+          <button id="manual-btn" type="button">⌨️ 利用者IDを手入力する</button>
+          <button id="cancel-btn" type="button">🛑 スキャンを中断する</button>
         </div>
       </div>
 
@@ -146,22 +146,22 @@
       <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 18px;">利用者ID(4桁)入力</h3>
       <div id="keypad-display" class="keypad-display"></div>
       <div class="keypad-grid">
-        <button class="keypad-btn" onclick="window.pressKey('1')">1</button>
-        <button class="keypad-btn" onclick="window.pressKey('2')">2</button>
-        <button class="keypad-btn" onclick="window.pressKey('3')">3</button>
-        <button class="keypad-btn" onclick="window.pressKey('4')">4</button>
-        <button class="keypad-btn" onclick="window.pressKey('5')">5</button>
-        <button class="keypad-btn" onclick="window.pressKey('6')">6</button>
-        <button class="keypad-btn" onclick="window.pressKey('7')">7</button>
-        <button class="keypad-btn" onclick="window.pressKey('8')">8</button>
-        <button class="keypad-btn" onclick="window.pressKey('9')">9</button>
-        <button class="keypad-btn clear" onclick="window.pressKey('C')">C</button>
-        <button class="keypad-btn" onclick="window.pressKey('0')">0</button>
-        <button class="keypad-btn clear" onclick="window.pressKey('AC')">AC</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('1')">1</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('2')">2</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('3')">3</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('4')">4</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('5')">5</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('6')">6</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('7')">7</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('8')">8</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('9')">9</button>
+        <button class="keypad-btn clear" type="button" onclick="window.pressKey('C')">C</button>
+        <button class="keypad-btn" type="button" onclick="window.pressKey('0')">0</button>
+        <button class="keypad-btn clear" type="button" onclick="window.pressKey('AC')">AC</button>
       </div>
       <div class="keypad-actions">
-        <button id="keypad-cancel" class="keypad-action-btn">キャンセル</button>
-        <button id="keypad-ok" class="keypad-action-btn" disabled>確定</button>
+        <button id="keypad-cancel" type="button" class="keypad-action-btn">キャンセル</button>
+        <button id="keypad-ok" type="button" class="keypad-action-btn" disabled>確定</button>
       </div>
     </div>
   </div>
@@ -237,7 +237,8 @@
     });
 
     // スキャン開始ボタンの処理
-    actionBtn.addEventListener('click', () => {
+    actionBtn.addEventListener('click', (e) => {
+      e.preventDefault(); // ブラウザ固有のSubmit挙動を完全に防止
       if (isScanning) return; 
       isScanning = true; 
       if (scanOverlay) { scanOverlay.innerText = ""; scanOverlay.className = "active"; }
@@ -246,7 +247,6 @@
       if (manualBtn) manualBtn.style.display = "none"; 
       if (cancelBtn) cancelBtn.style.display = "block";
       
-      // 🌟【修正】1回目・2回目に関わらず、「ユーザーがボタンを物理的に押した瞬間」にのみ安全に1分タイマーを始動
       clearScanTimeout();
       scanTimeoutTimer = setTimeout(() => {
         playSound("error");
@@ -273,11 +273,17 @@
         log("【スキャン開始】削除する端末のQRコードを待機中... (1分タイムアウト有効)");
         updateStatus("【登録解除スキャン中】\nマスターから除籍する端末のQRコードをかざしてください。", "#e67e22");
       }
-      tick();
+      
+      // 🌟【最重要修正】ボタンを押したその瞬間の最初のコマで誤判定（フライング）させないため、
+      // ほんのわずか（100ミリ秒）だけウェイトを置いてから画像解析ループを開始する
+      setTimeout(() => {
+        if (isScanning) tick();
+      }, 100);
     });
 
     if (manualBtn) {
-      manualBtn.addEventListener('click', () => {
+      manualBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         inputBuffer = "";
         if (keypadDisplay) keypadDisplay.innerText = "";
         if (keypadOk) keypadOk.disabled = true;
@@ -287,14 +293,16 @@
     }
 
     if (keypadCancel) {
-      keypadCancel.addEventListener('click', () => {
+      keypadCancel.addEventListener('click', (e) => {
+        e.preventDefault();
         if (keypadModal) keypadModal.style.display = "none";
         log("⌨️ 手入力がキャンセルされました。");
       });
     }
 
     if (keypadOk) {
-      keypadOk.addEventListener('click', () => {
+      keypadOk.addEventListener('click', (e) => {
+        e.preventDefault();
         clearScanTimeout(); 
         if (keypadModal) keypadModal.style.display = "none";
         const forcedStringId = String(inputBuffer).trim();
@@ -304,7 +312,8 @@
       });
     }
 
-    cancelBtn.addEventListener('click', () => {
+    cancelBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       clearScanTimeout(); 
       log("🛑 中断されました。初期状態に戻します。");
       resetSystemState();
@@ -312,7 +321,8 @@
     });
 
     if (cameraSwitchBtn) {
-      cameraSwitchBtn.addEventListener('click', () => {
+      cameraSwitchBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
         localStorage.setItem('selectedCameraFacing', currentFacingMode);
         log("🔄 カメラ切り替えを実行します。");
@@ -403,6 +413,13 @@
 
         if (code) {
           const scannedText = code.data.trim();
+          
+          // 🌟【防壁】もし読み取った文字が完全に空っぽなら無視してループを続行する
+          if (!scannedText) {
+            requestAnimationFrame(tick);
+            return;
+          }
+          
           playSound("read"); 
           log(`🎯 QR検出成功: [${scannedText}]`);
           
@@ -422,24 +439,34 @@
 
     function handleScannedData(scannedText) {
       if (scanOverlay) { scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; }
+      
+      // 🌟【防壁】万が一ここを空文字（""）が通り抜けようとした場合、絶対に送信に進ませずここで叩き落とす
+      if (scannedText === undefined || scannedText === null || scannedText.trim() === "") {
+        log("⚠️ 警告: 空のデータが検出されたため、送信を安全にブロックしました。");
+        isScanning = true;
+        tick();
+        return;
+      }
+
+      const cleanText = scannedText.trim();
 
       if (currentMode === "利用者へ貸出") {
         if (!savedStudentId) {
-          if (/^\d{4}$/.test(scannedText)) { 
-            fetchUserName(scannedText);
+          if (/^\d{4}$/.test(cleanText)) { 
+            fetchUserName(cleanText);
           } else {
             playSound("error"); 
-            log(`❌ 判定エラー: [${scannedText}] は4桁の数字ではありません。`);
+            log(`❌ 判定エラー: [${cleanText}] は4桁の数字ではありません。`);
             updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
-          log(`🚀 送信準備: 利用者 [${savedStudentName} (${savedStudentId})] ➔ 端末 [${scannedText}]`);
-          executeSubmit(currentMode, savedStudentId, scannedText);
+          log(`🚀 送信準備: 利用者 [${savedStudentName} (${savedStudentId})] ➔ 端末 [${cleanText}]`);
+          executeSubmit(currentMode, savedStudentId, cleanText);
         }
       } else {
-        log(`🚀 送信準備: モード [${currentMode}] ➔ 端末 [${scannedText}]`);
-        executeSubmit(currentMode, scannedText, "");
+        log(`🚀 送信準備: モード [${currentMode}] ➔ 端末 [${cleanText}]`);
+        executeSubmit(currentMode, cleanText, "");
       }
     }
 
@@ -461,7 +488,6 @@
         if (manualBtn) manualBtn.style.display = "none"; 
         cancelBtn.style.display = "block";
         
-        // 🌟【修正】自動で2回目のタイマーをここでスタートさせるのを廃止（暴発原因を除去）
         clearScanTimeout();
 
         delete window[callbackName];
@@ -490,12 +516,19 @@
     }
 
     async function executeSubmit(mode, data1, data2) {
+      // 🌟最後の最後の砦：ここでも送信データが本当に正しいかチェック
+      if (!data1 || (mode === "利用者へ貸出" && !data2)) {
+        log("❌ 深刻なエラー: 送信データが不足しているためexecuteSubmitを強制停止しました。");
+        resetSystemState();
+        return;
+      }
+
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       cancelBtn.style.display = "none";
       if (manualBtn) manualBtn.style.display = "none"; 
       
-      const safeData1 = (data1 === "" || data1 === undefined || data1 === null) ? " " : data1;
-      const safeData2 = (data2 === "" || data2 === undefined || data2 === null) ? " " : data2;
+      const safeData1 = data1;
+      const safeData2 = data2;
 
       const formData = new FormData();
       formData.append(ENTRY_MODE, mode === "利用者へ貸出" ? "生徒へ貸出" : mode === "利用者から返却" ? "生徒から返却" : mode);
