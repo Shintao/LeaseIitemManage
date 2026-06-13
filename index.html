@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（安定版）</title>
+  <title>Chromebook等 貸出管理システム（完全防壁版）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
@@ -114,7 +114,7 @@
         <div class="btn-group">
           <button id="action-btn" type="button">🔍 スキャンを開始する</button>
           <button id="manual-btn" type="button">⌨️ 利用者IDを手入力する</button>
-          <button id="cancel-btn" type="button">🛑 スキャンを中断する</button>
+          <button id="cancel-btn" type="button">🛑 操作を中断する</button>
         </div>
       </div>
 
@@ -200,7 +200,6 @@
     let inputBuffer = ""; 
     
     let scanTimeoutTimer = null;
-    let currentActiveJsonpScriptId = null; // 現在実行中のJSONPスクリプトIDを追跡
 
     function log(msg) {
       if (!debugConsole) return;
@@ -213,16 +212,6 @@
       if (scanTimeoutTimer) {
         clearTimeout(scanTimeoutTimer);
         scanTimeoutTimer = null;
-      }
-    }
-
-    // 途中で残ってしまった通信ゾンビを完全に消滅させる関数
-    function killActiveJsonp() {
-      if (currentActiveJsonpScriptId) {
-        const oldScript = document.getElementById(currentActiveJsonpScriptId);
-        if (oldScript) oldScript.remove();
-        delete window[currentActiveJsonpScriptId];
-        currentActiveJsonpScriptId = null;
       }
     }
 
@@ -247,69 +236,48 @@
       });
     });
 
-    // 🌟標準のスキャン開始処理（初期状態・返却・登録など用）
-    function onActionBtnDefaultClick(e) {
-      if(e) e.preventDefault();
+    // 🌟一本化された安全なメインボタンのクリックイベント
+    actionBtn.addEventListener('click', (e) => {
+      if (e) e.preventDefault();
+      
       if (isScanning) return; 
+
+      // 1回目のスキャン（または手入力後の2回目スキャン移行）
       isScanning = true; 
       if (scanOverlay) { scanOverlay.innerText = ""; scanOverlay.className = "active"; }
       actionBtn.disabled = true; 
-      
       if (manualBtn) manualBtn.style.display = "none"; 
       if (cancelBtn) cancelBtn.style.display = "block";
       
       clearScanTimeout();
       scanTimeoutTimer = setTimeout(() => {
         playSound("error");
-        log("⚠️ スキャンタイムアウト（1分自動リセット）");
+        log("⚠️ スキャンタイムアウトによる自動リセット");
         resetSystemState();
         fetchStockInfo();
       }, 60000); 
 
       if (currentMode === "利用者へ貸出") {
-        log("【スキャン開始】利用者IDのQRコードを待機中...");
-        updateStatus("【利用者IDスキャン中】\n利用者の「4桁数字ID」のQRをカメラにかざしてください。", "#3498db");
-      } else if (currentMode === "利用者から返却") {
-        log("【スキャン開始】返却端末のQRコードを待機中...");
-        updateStatus("【返却スキャン中】\n返却する端末のQRコードをかざしてください。", "#2ecc71");
-      } else if (currentMode === "端末新規登録") {
-        log("【スキャン開始】新規登録する端末のQRコードを待機中...");
-        updateStatus("【新規登録スキャン中】\nマスターに登録する端末のQRコードをかざしてください。", "#9b59b6");
+        if (!savedStudentId) {
+          log("【スキャン開始】利用者IDのQRコードを待機中...");
+          updateStatus("【利用者IDスキャン中】\n利用者の「4桁数字ID」のQRをカメラにかざしてください。", "#3498db");
+        } else {
+          log(`【スキャン開始】端末QRコードを待機中... (対象: ${savedStudentName})`);
+          updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRコードをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
+        }
       } else {
-        log("【スキャン開始】削除する端末のQRコードを待機中...");
-        updateStatus("【登録解除スキャン中】\nマスターから除籍する端末のQRコードをかざしてください。", "#e67e22");
+        // 返却・登録などのモード
+        if (currentMode === "利用者から返却") {
+          updateStatus("【返却スキャン中】\n返却する端末のQRコードをかざしてください。", "#2ecc71");
+        } else if (currentMode === "端末新規登録") {
+          updateStatus("【新規登録スキャン中】\nマスターに登録する端末のQRコードをかざしてください。", "#9b59b6");
+        } else {
+          updateStatus("【登録解除スキャン中】\nマスターから除籍する端末のQRコードをかざしてください。", "#e67e22");
+        }
       }
       
       setTimeout(() => { if (isScanning) tick(); }, 100);
-    }
-
-    // 🌟【最重要】2回目の「端末QRスキャン」の時だけ、完全に独立して動くイベント処理
-    function onActionBtnDeviceScanClick(e) {
-      if(e) e.preventDefault();
-      
-      // 完全に通信ゾンビを遮断
-      killActiveJsonp();
-      
-      if (isScanning) return;
-      isScanning = true;
-      if (scanOverlay) { scanOverlay.innerText = ""; scanOverlay.className = "active"; }
-      actionBtn.disabled = true;
-      if (manualBtn) manualBtn.style.display = "none";
-      cancelBtn.style.display = "block";
-
-      clearScanTimeout();
-      scanTimeoutTimer = setTimeout(() => {
-        playSound("error");
-        log("⚠️ 端末スキャンタイムアウトによる自動リセット");
-        resetSystemState();
-        fetchStockInfo();
-      }, 60000);
-
-      log(`【スキャン開始】端末QRコードを待機中... (${savedStudentName})`);
-      updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
-      
-      setTimeout(() => { if (isScanning) tick(); }, 100);
-    }
+    });
 
     if (manualBtn) {
       manualBtn.addEventListener('click', (e) => {
@@ -333,7 +301,6 @@
     if (keypadOk) {
       keypadOk.addEventListener('click', (e) => {
         e.preventDefault();
-        killActiveJsonp(); // 手入力が確定した時点で、現在走っている通信のゾンビを殺す
         clearScanTimeout(); 
         if (keypadModal) keypadModal.style.display = "none";
         const forcedStringId = String(inputBuffer).trim();
@@ -345,9 +312,8 @@
 
     cancelBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      killActiveJsonp();
       clearScanTimeout(); 
-      log("🛑 中断されました。初期状態に戻します。");
+      log("🛑 操作が中断されました。初期状態に戻します。");
       resetSystemState();
       fetchStockInfo(); 
     });
@@ -389,7 +355,6 @@
     }
 
     function resetSystemState() {
-      killActiveJsonp();
       clearScanTimeout(); 
       isScanning = false;
       savedStudentId = "";
@@ -398,26 +363,13 @@
       actionBtn.disabled = false;
       cancelBtn.style.display = "none";
       
-      // ボタンのイベントリスナーを一度更地にする
-      actionBtn.removeEventListener('click', onActionBtnDefaultClick);
-      actionBtn.removeEventListener('click', onActionBtnDeviceScanClick);
-      
-      // デフォルトのイベントを再登録
-      actionBtn.addEventListener('click', onActionBtnDefaultClick);
-      
       if (currentMode === "利用者へ貸出") {
         actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
-        
-        if (manualBtn) {
-          manualBtn.style.display = "block"; 
-          manualBtn.disabled = false;
-        }
-        
+        if (manualBtn) { manualBtn.style.display = "block"; manualBtn.disabled = false; }
         updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
       } else {
         if (manualBtn) manualBtn.style.display = "none"; 
-        
         if (currentMode === "利用者から返却") {
           actionBtn.innerText = "🔍 返却スキャンを開始";
           actionBtn.style.backgroundColor = "#2ecc71";
@@ -453,11 +405,7 @@
 
         if (code) {
           const scannedText = code.data.trim();
-          
-          if (!scannedText) {
-            requestAnimationFrame(tick);
-            return;
-          }
+          if (!scannedText) { requestAnimationFrame(tick); return; }
           
           playSound("read"); 
           log(`🎯 QR検出成功: [${scannedText}]`);
@@ -478,14 +426,7 @@
 
     function handleScannedData(scannedText) {
       if (scanOverlay) { scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; }
-      
-      if (scannedText === undefined || scannedText === null || scannedText.trim() === "") {
-        log("⚠️ 警告: 空データのためスキャン再開。");
-        isScanning = true;
-        tick();
-        return;
-      }
-
+      if (!scannedText || scannedText.trim() === "") return;
       const cleanText = scannedText.trim();
 
       if (currentMode === "利用者へ貸出") {
@@ -510,74 +451,67 @@
 
     function fetchUserName(id) {
       updateStatus("🔍 利用者マスターを照会中...", "#7f8c8d");
-      
-      killActiveJsonp(); // 念のため古い通信を完全消滅
-      
       const cleanId = encodeURIComponent(String(id).toUpperCase().trim());
       const callbackName = 'jsonp_name_' + Math.round(100000 * Math.random());
-      currentActiveJsonpScriptId = callbackName;
       
       window[callbackName] = function(data) {
-        if (currentActiveJsonpScriptId !== callbackName) return; // 既にクリアされていたら何もしない
-        
         savedStudentId = String(id).trim(); 
         savedStudentName = data.name;
         log(`✅ 利用者特定: ID [${savedStudentId}] ➔ 名前: [${data.name}]`);
         
-        setupDeviceScanReadyState();
+        updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機器のQR】を正面に準備し、下のボタンを押してスキャンしてください。`, "#2c3e50");
+        actionBtn.innerText = "🔍 端末QRのスキャンを開始";
+        actionBtn.style.backgroundColor = "#e67e22"; 
+        actionBtn.disabled = false;
+        if (manualBtn) manualBtn.style.display = "none";
+        cancelBtn.style.display = "block";
+
+        delete window[callbackName];
+        const targetScript = document.getElementById(callbackName);
+        if(targetScript) targetScript.remove();
       };
       
       const script = document.createElement('script');
       script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + cleanId + '&callback=' + callbackName;
       script.onerror = function() {
-        if (currentActiveJsonpScriptId !== callbackName) return;
-        
         playSound("error"); 
         savedStudentId = String(id).trim();
         savedStudentName = "名前取得エラー(未登録)";
         log("⚠️ 利用者名の取得通信に失敗（未登録扱いとして進行を許可）");
         
-        setupDeviceScanReadyState();
+        updateStatus(`👤 利用者ID: [${savedStudentId}] をロック(未登録)。\n貸し出す【機器のQR】を準備し、下のボタンを押してスキャンしてください。`, "#2c3e50");
+        actionBtn.innerText = "🔍 端末QRのスキャンを開始";
+        actionBtn.style.backgroundColor = "#e67e22"; 
+        actionBtn.disabled = false;
+        if (manualBtn) manualBtn.style.display = "none";
+        cancelBtn.style.display = "block";
+
+        delete window[callbackName];
+        const targetScript = document.getElementById(callbackName);
+        if(targetScript) targetScript.remove();
       };
       document.body.appendChild(script);
     }
 
-    // 🌟 利用者確定（またはエラー通過）した後に、ボタンの役割を安全に「機体QR用」にすり替える関数
-    function setupDeviceScanReadyState() {
-      // 1. ボタンから「通常スキャン」のイベントを完全に引き剥がす
-      actionBtn.removeEventListener('click', onActionBtnDefaultClick);
-      
-      // 2. ボタンに「機体スキャン専用」のイベントを新しく登録する
-      actionBtn.addEventListener('click', onActionBtnDeviceScanClick);
-      
-      updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機器のQR】を正面に準備し、下のボタンを押してください。`, "#2c3e50");
-      actionBtn.innerText = "🔍 端末QRのスキャンを開始";
-      actionBtn.style.backgroundColor = "#e67e22"; 
-      actionBtn.disabled = false;
-      
-      if (manualBtn) manualBtn.style.display = "none";
-      cancelBtn.style.display = "block";
-      
-      clearScanTimeout();
-      currentActiveJsonpScriptId = null; // 正常に完了したため追跡解除
-    }
-
     async function executeSubmit(mode, data1, data2) {
-      // 🌟【絶対防壁】もし空文字なら、GASへリクエストが飛ぶのを手前で100%遮断する
-      if (!data1 || data1.trim() === "" || (mode === "利用者へ貸出" && (!data2 || data2.trim() === ""))) {
-        log("❌ 送信ブロック: 必要なQRデータが空欄です。入力を待機します。");
-        // 安全に機体QRスキャン状態（オレンジの画面）のままキープする
-        isScanning = true;
-        if (scanOverlay) { scanOverlay.innerText = ""; scanOverlay.className = "active"; }
-        actionBtn.disabled = true;
-        setTimeout(() => { if (isScanning) tick(); }, 100);
-        return; 
+      // 🌟【絶対最強の鉄壁】ここで空欄送信を一瞬の猶予もなく100%射殺する
+      if (mode === "利用者へ貸出") {
+        if (!data1 || data1.trim() === "" || !data2 || data2.trim() === "") {
+          log("🛑 [防壁作動] 端末データが空欄、またはIDが不正なため、GASへの送信を完全ブロックしました。");
+          // 画面の状態を壊さず、安全に「端末QR待ち（オレンジ）」のままピタッと静止させる
+          isScanning = false;
+          if (scanOverlay) { scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; }
+          actionBtn.disabled = false; // ボタンをもう一度押せるように解放
+          updateStatus(`⚠️ 端末QRが読み取れていません！\n[対象者: ${savedStudentName}] の機器QRをかざすか、下のボタンを押してスキャンをやり直してください。`, "#e67e22");
+          return; // 💥ここで処理を強制終了。1ミリも下へ行かせない。
+        }
       }
 
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       cancelBtn.style.display = "none";
       if (manualBtn) manualBtn.style.display = "none"; 
+      actionBtn.disabled = true;
       
       const safeData1 = data1;
       const safeData2 = data2;
