@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（本格運用版）</title>
+  <title>Chromebook等 貸出管理システム（修正版）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
@@ -35,19 +35,16 @@
     video { width: 100%; height: 100%; object-fit: contain; display: block; }
     
     /* カメラ切り替えボタン */
-    #camera-switch-btn { position: absolute; top: 10px; right: 10px; z-index: 5; background: rgba(0, 0, 0, 0.6); color: white; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.2s; padding: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-    #camera-switch-btn:active { background: rgba(52, 152, 219, 0.9); }
+    #camera-switch-btn { position: absolute; top: 10px; right: 10px; z-index: 5; background: rgba(0, 0, 0, 0.6); color: white; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 
     #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; font-weight:bold; z-index: 2; pointer-events: none; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.15); color: transparent; border: 5px solid #3498db; box-sizing: border-box; }
 
     .btn-group { display: flex; flex-direction: column; gap: 10px; }
-    #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.2s; box-sizing: border-box; }
+    #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; }
     
     /* 手入力ボタン */
-    #manual-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #7f8c8d; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; transition: background-color 0.2s; box-sizing: border-box; }
-    #manual-btn:active { background-color: #95a5a6; }
-    
+    #manual-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #7f8c8d; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; box-sizing: border-box; }
     #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; box-sizing: border-box; }
     #action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
     
@@ -70,4 +67,243 @@
     .keypad-content { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 320px; text-align: center; box-sizing: border-box; }
     .keypad-display { width: 100%; height: 50px; font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 2px solid #bdc3c7; border-radius: 6px; background: #f8f9fa; line-height: 50px; letter-spacing: 4px; color: #2c3e50; }
     .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-    .keypad-btn { background: #ecf0f1; border: none; padding: 15px 0; font
+    .keypad-btn { background: #ecf0f1; border: none; padding: 15px 0; font-size: 22px; font-weight: bold; border-radius: 8px; cursor: pointer; color: #2c3e50; }
+    .keypad-btn.clear { background: #fab1a0; color: #c0392b; }
+    .keypad-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .keypad-action-btn { padding: 12px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
+    #keypad-cancel { background: #b2bec3; color: white; }
+    #keypad-ok { background: #2ecc71; color: white; }
+    #keypad-ok:disabled { background: #bdc3c7; }
+
+    @media (max-width: 768px) {
+      .header-area { flex-direction: column; align-items: stretch; text-align: center; }
+      .mode-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+      .mode-container label { padding: 12px 5px; font-size: 15px; }
+      #status { font-size: 20px; padding: 15px; border-left-width: 8px; min-height: auto; }
+      .main-layout { flex-direction: column; gap: 15px; }
+      .left-panel, .right-panel { flex: none; width: 100%; }
+      #video-container { height: 180px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="header-area">
+      <h2>Chromebook等 貸出管理システム</h2>
+      <div class="mode-container">
+        <input type="radio" id="m-rent" name="mode" value="利用者へ貸出" checked>
+        <label for="m-rent">📤 貸出</label>
+        <input type="radio" id="m-return" name="mode" value="利用者から返却">
+        <label for="m-return">📥 返却</label>
+        <input type="radio" id="m-add" name="mode" value="端末新規登録">
+        <label for="m-add">➕ 登録</label>
+        <input type="radio" id="m-del" name="mode" value="端末登録解除">
+        <label for="m-del">❌ 解除</label>
+      </div>
+    </div>
+
+    <div id="status">モードを選択し、ボタンを押して開始してください</div>
+
+    <div class="main-layout">
+      <div class="left-panel">
+        <div id="video-container">
+          <button id="camera-switch-btn" title="カメラの向きを切り替え">🔄</button>
+          <video id="video" autoplay playsinline muted></video>
+          <div id="scan-overlay">⏸️ スキャン停止中</div>
+          <div id="loading-overlay">カメラ初期化中...</div>
+        </div>
+
+        <div class="btn-group">
+          <button id="action-btn">🔍 スキャンを開始する</button>
+          <button id="manual-btn">⌨️ 利用者IDを手入力する</button>
+          <button id="cancel-btn">🛑 スキャンを中断する</button>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="stock-panel">
+          <h3>現在の貸出可能在庫</h3>
+          <div class="stock-grid">
+            <div class="stock-item">
+              <div>💻 予備機 (9900番台)</div>
+              <div class="stock-count" id="stock-pc">---</div>
+            </div>
+            <div class="stock-item">
+              <div>🔋 モバイルバッテリー</div>
+              <div class="stock-count" id="stock-battery">---</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="log-panel">
+          <h3>🚨 システム内部動作ログ</h3>
+          <div id="debug-console">--- 運用ログ開始 ---&#13;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="keypad-modal" class="keypad-modal">
+    <div class="keypad-content">
+      <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 18px;">利用者ID(4桁)入力</h3>
+      <div id="keypad-display" class="keypad-display"></div>
+      <div class="keypad-grid">
+        <button class="keypad-btn" onclick="pressKey('1')">1</button>
+        <button class="keypad-btn" onclick="pressKey('2')">2</button>
+        <button class="keypad-btn" onclick="pressKey('3')">3</button>
+        <button class="keypad-btn" onclick="pressKey('4')">4</button>
+        <button class="keypad-btn" onclick="pressKey('5')">5</button>
+        <button class="keypad-btn" onclick="pressKey('6')">6</button>
+        <button class="keypad-btn" onclick="pressKey('7')">7</button>
+        <button class="keypad-btn" onclick="pressKey('8')">8</button>
+        <button class="keypad-btn" onclick="pressKey('9')">9</button>
+        <button class="keypad-btn clear" onclick="pressKey('C')">C</button>
+        <button class="keypad-btn" onclick="pressKey('0')">0</button>
+        <button class="keypad-btn clear" onclick="pressKey('AC')">AC</button>
+      </div>
+      <div class="keypad-actions">
+        <button id="keypad-cancel" class="keypad-action-btn">キャンセル</button>
+        <button id="keypad-ok" class="keypad-action-btn" disabled>確定</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <script>
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
+    const ENTRY_MODE = "entry.866648275";
+    const ENTRY_DATA1 = "entry.1165154720";
+    const ENTRY_DATA2 = "entry.1094519910";
+    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxGmBTg8T4quolzCtotdF3j_V0iWTpd7O2wvbsZ0i3saM3pAPekDj98npUVaGCqe2oMFQ/exec"; 
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const statusDiv = document.getElementById('status');
+    const overlay = document.getElementById('loading-overlay');
+    const scanOverlay = document.getElementById('scan-overlay');
+    const actionBtn = document.getElementById('action-btn');
+    const manualBtn = document.getElementById('manual-btn'); 
+    const cancelBtn = document.getElementById('cancel-btn');
+    const debugConsole = document.getElementById('debug-console');
+    const cameraSwitchBtn = document.getElementById('camera-switch-btn');
+    
+    const keypadModal = document.getElementById('keypad-modal');
+    const keypadDisplay = document.getElementById('keypad-display');
+    const keypadOk = document.getElementById('keypad-ok');
+    const keypadCancel = document.getElementById('keypad-cancel');
+    
+    let isScanning = false; 
+    let currentMode = "利用者へ貸出";
+    let savedStudentId = ""; 
+    let savedStudentName = ""; 
+    let currentStream = null;
+    let inputBuffer = ""; 
+
+    // 安全に要素の表示・非表示を切り替える関数（Null回避ガード付き）
+    function setDisplay(element, value) {
+      if (element && element.style) {
+        element.style.display = value;
+      }
+    }
+
+    function log(msg) {
+      if (!debugConsole) return;
+      const now = new Date();
+      debugConsole.innerHTML += `[${now.toLocaleTimeString()}] ${msg}&#13;`;
+      debugConsole.scrollTop = debugConsole.scrollHeight;
+    }
+
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        currentMode = e.target.value;
+        localStorage.setItem('selectedMode', currentMode); 
+        log(`モード切替: ${currentMode}`);
+        resetSystemState();
+      });
+    });
+
+    window.onload = () => {
+      log("システム初期化シーケンスを開始。");
+      
+      const savedMode = localStorage.getItem('selectedMode');
+      if (savedMode) {
+        let targetValue = savedMode;
+        if (savedMode === "生徒へ貸出") targetValue = "利用者へ貸出";
+        if (savedMode === "生徒から返却") targetValue = "利用者から返却";
+        
+        const radio = document.querySelector(`input[value="${targetValue}"]`);
+        if (radio) { radio.checked = true; currentMode = targetValue; }
+      }
+      
+      fetchStockInfo();
+      resetSystemState();
+      startCamera();
+    };
+
+    function startCamera() {
+      if (overlay) {
+        overlay.style.display = "flex";
+        overlay.innerText = "カメラ初期化中...";
+      }
+      
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      log("カメラ映像ストリームを要求中...");
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+      .then(stream => { 
+        currentStream = stream;
+        video.srcObject = stream; 
+        if (overlay) overlay.style.display = "none"; 
+        log("✅ カメラ初期化成功。");
+      })
+      .catch(err => { 
+        log(`⚠️ 内側カメラ要求失敗、環境デフォルトに切り替えます: ${err.message}`);
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+          currentStream = stream;
+          video.srcObject = stream;
+          if (overlay) overlay.style.display = "none";
+          log("✅ デフォルトカメラで接続成功。");
+        })
+        .catch(e => {
+          if (overlay) {
+            overlay.style.display = "flex";
+            overlay.innerText = "❌ カメラ起動失敗";
+          }
+          log(`❌ カメラ起動エラー: ${e.message}`);
+        });
+      });
+    }
+
+    if (cameraSwitchBtn) {
+      cameraSwitchBtn.addEventListener('click', () => {
+        log("🔄 カメラ反転要求を受け付けました。");
+        if (!currentStream) return;
+        const tracks = currentStream.getVideoTracks();
+        if (tracks.length === 0) return;
+        const currentFacing = tracks[0].getSettings().facingMode;
+        const targetFacing = currentFacing === "user" ? "environment" : "user";
+        
+        if (overlay) overlay.style.display = "flex";
+        currentStream.getTracks().forEach(track => track.stop());
+        
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: targetFacing }, audio: false })
+        .then(stream => {
+          currentStream = stream;
+          video.srcObject = stream;
+          if (overlay) overlay.style.display = "none";
+          log(`✅ カメラ切り替え成功: ${targetFacing}`);
+        })
+        .catch(err => {
+          log(`❌ 切り替え失敗、デフォルトで再起動: ${err.message}`);
+          startCamera();
+        });
+      });
+    }
+
+    if (actionBtn) {
+      actionBtn.addEventListener('click', () => {
