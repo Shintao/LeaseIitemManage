@@ -396,11 +396,11 @@
         } else if (currentMode === "端末新規登録") {
           actionBtn.innerText = "🔍 新規登録スキャンを開始";
           actionBtn.style.backgroundColor = "#9b59b6";
-          updateStatus("【管理者：端末登録マスター】\n上のボタンを押して新規登録スキャンを開始してください。", "#9b59b6");
+          updateStatus("【管理者：端末登録マスター】\n下のボタンを押して新規登録スキャンを開始してください。", "#9b59b6");
         } else {
           actionBtn.innerText = "🔍 登録解除スキャンを開始";
           actionBtn.style.backgroundColor = "#e67e22";
-          updateStatus("【管理者：端末除籍マスター】\n上のボタンを押して削除するスキャンを開始してください。", "#e67e22");
+          updateStatus("【管理者：端末除籍マスター】\n下のボタンを押して削除するスキャンを開始してください。", "#e67e22");
         }
       }
     }
@@ -478,7 +478,7 @@
         savedStudentName = data.name;
         log(`✅ 利用者特定: ID [${savedStudentId}] ➔ 名前: [${savedStudentName}]`);
         
-        updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機体のQR】を正面に準備し、上のボタンを押してください。`, "#2c3e50");
+        updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機体のQR】を正面に準備し、下のボタンを押してください。`, "#2c3e50");
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
@@ -498,7 +498,7 @@
         playSound("error"); 
         savedStudentId = String(id).trim();
         savedStudentName = "名前取得エラー(未登録の可能性)";
-        updateStatus(`👤 利用者ID: [${savedStudentId}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、上のボタンを押してください。`, "#2c3e50");
+        updateStatus(`👤 利用者ID: [${savedStudentId}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、下のボタンを押してください。`, "#2c3e50");
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
