@@ -356,13 +356,9 @@
       log("⌨️ 手入力がキャンセルされました。");
     });
 
-    // 確定ボタン押下時、確実に文字列（String）に型変換して引き渡す
     keypadOk.addEventListener('click', () => {
       keypadModal.style.display = "none";
-      
-      // 🌟 【修正箇所】バッファの数値を明示的にString型文字列へキャスト
       const forcedStringId = String(inputBuffer).trim();
-      
       log(`⌨️ 手入力によりID確定: [${forcedStringId}]`);
       
       isScanning = false;
@@ -396,7 +392,7 @@
         if (currentMode === "利用者から返却") {
           actionBtn.innerText = "🔍 返却スキャンを開始";
           actionBtn.style.backgroundColor = "#2ecc71";
-          updateStatus("【返却モード：待機中】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
+          updateStatus("【返却モード：待機中}】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
         } else if (currentMode === "端末新規登録") {
           actionBtn.innerText = "🔍 新規登録スキャンを開始";
           actionBtn.style.backgroundColor = "#9b59b6";
@@ -469,14 +465,18 @@
       }
     }
 
+    // 🌟 修正箇所：手入力・QRのどちらから来ても100%確実にGAS側が処理できるようにパラメータの渡し方を徹底強化
     function fetchUserName(id) {
       updateStatus("🔍 利用者マスターを照会中...", "#7f8c8d");
+      
+      // パラメータを強固にクリーニング＆文字列エンコード化
+      const cleanId = encodeURIComponent(String(id).toUpperCase().trim());
       const callbackName = 'jsonp_name_' + Math.round(100000 * Math.random());
       
       window[callbackName] = function(data) {
-        savedStudentId = id;
+        savedStudentId = String(id).trim(); // 元のIDを保持
         savedStudentName = data.name;
-        log(`✅ 利用者特定: ID [${id}] ➔ 名前: [${savedStudentName}]`);
+        log(`✅ 利用者特定: ID [${savedStudentId}] ➔ 名前: [${savedStudentName}]`);
         
         updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機体のQR】を正面に準備し、上のボタンを押してください。`, "#2c3e50");
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
@@ -486,17 +486,19 @@
         cancelBtn.style.display = "block";
         
         delete window[window[callbackName]];
-        document.getElementById(callbackName).remove();
+        const targetScript = document.getElementById(callbackName);
+        if(targetScript) targetScript.remove();
       };
       
       const script = document.createElement('script');
       script.id = callbackName;
-      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + id + '&callback=' + callbackName;
+      // 強制クリーニングしたcleanIdを投げる
+      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + cleanId + '&callback=' + callbackName;
       script.onerror = function() {
         playSound("error"); 
-        savedStudentId = id;
+        savedStudentId = String(id).trim();
         savedStudentName = "名前取得エラー(未登録の可能性)";
-        updateStatus(`👤 利用者ID: [${id}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、上のボタンを押してください。`, "#2c3e50");
+        updateStatus(`👤 利用者ID: [${savedStudentId}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、上のボタンを押してください。`, "#2c3e50");
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
