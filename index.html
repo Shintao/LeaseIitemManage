@@ -329,7 +329,7 @@
         }
       })
       .catch(err => { 
-        if (overlay) { overlay.style.style.display = "flex"; overlay.innerText = "❌ カメラエラー: " + err.message; }
+        if (overlay) { overlay.style.display = "flex"; overlay.innerText = "❌ カメラエラー: " + err.message; }
         log(`❌ カメラ起動エラー: ${err.message}`);
         updateStatus("カメラが起動できません。権限を確認してください。", "red");
       });
