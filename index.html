@@ -20,14 +20,18 @@
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
+    /* 最上部メッセージ表示エリア（巨大化・強調） */
+    #status { padding: 20px; font-size: 24px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 12px solid #bdc3c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); min-height: 72px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.6; margin-bottom: 15px; }
+
     .main-layout { display: flex; gap: 20px; flex: 1; min-height: 0; }
     .left-panel { flex: 1.1; display: flex; flex-direction: column; min-height: 0; gap: 12px; }
     .right-panel { flex: 0.9; display: flex; flex-direction: column; min-height: 0; gap: 12px; }
     
-    #video-container { position: relative; width: 100%; height: 260px; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    /* カメラコンテナ（小サイズ化） */
+    #video-container { position: relative; width: 100%; height: 160px; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     video { width: 100%; height: 100%; object-fit: contain; display: block; }
     
-    #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; justify-content:center; align-items:center; font-size:18px; font-weight:bold; z-index: 2; pointer-events: none; }
+    #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; font-weight:bold; z-index: 2; pointer-events: none; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.15); color: transparent; border: 5px solid #3498db; box-sizing: border-box; }
 
     .btn-group { display: flex; flex-direction: column; gap: 10px; }
@@ -35,18 +39,18 @@
     #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; }
     #action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
     
-    #status { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 8px solid #bdc3c7; box-shadow: 0 2px 5px rgba(0,0,0,0.05); min-height: 56px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.5; }
-    
-    .log-panel { display: flex; flex-direction: column; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: 200px; min-height: 200px; }
-    .log-panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
-    #debug-console { flex: 1; background: #222; color: #00ff00; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 5px; overflow-y: auto; white-space: pre-wrap; }
-    
+    /* 右側パーツのスタイル設定 */
     .stock-panel { padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stock-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
     .stock-grid { display: flex; justify-content: space-around; }
     .stock-item { text-align: center; font-size: 14px; }
     .stock-count { font-size: 26px; font-weight: bold; color: #2c3e50; margin-top: 6px; }
     .stock-count.low { color: #e74c3c; }
+
+    .log-panel { display: flex; flex-direction: column; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); flex: 1; min-height: 150px; }
+    .log-panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
+    #debug-console { flex: 1; background: #222; color: #00ff00; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 5px; overflow-y: auto; white-space: pre-wrap; }
+    
     #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
   </style>
 </head>
@@ -67,6 +71,8 @@
       </div>
     </div>
 
+    <div id="status">モードを選択し、ボタンを押して開始してください</div>
+
     <div class="main-layout">
       <div class="left-panel">
         <div id="video-container">
@@ -79,16 +85,9 @@
           <button id="action-btn">🔍 スキャンを開始する</button>
           <button id="cancel-btn">🛑 スキャンを中断する</button>
         </div>
-        
-        <div id="status">モードを選択し、ボタンを押して開始してください</div>
       </div>
 
       <div class="right-panel">
-        <div class="log-panel">
-          <h3>🚨 システム内部動作ログ</h3>
-          <div id="debug-console">--- 運用ログ開始 ---&#13;</div>
-        </div>
-
         <div class="stock-panel">
           <h3>現在の貸出可能在庫</h3>
           <div class="stock-grid">
@@ -101,6 +100,11 @@
               <div class="stock-count" id="stock-battery">---</div>
             </div>
           </div>
+        </div>
+
+        <div class="log-panel">
+          <h3>🚨 システム内部動作ログ</h3>
+          <div id="debug-console">--- 運用ログ開始 ---&#13;</div>
         </div>
       </div>
     </div>
@@ -215,19 +219,19 @@
       if (currentMode === "利用者へ貸出") {
         actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
-        updateStatus("【貸出モード：待機中】\n上の「利用者IDのスキャンを開始」を押してください。", "#3498db");
+        updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」を押してください。", "#3498db");
       } else if (currentMode === "利用者から返却") {
         actionBtn.innerText = "🔍 返却スキャンを開始";
         actionBtn.style.backgroundColor = "#2ecc71";
-        updateStatus("【返却モード：待機中】\n上の「返却スキャンを開始」を押してください。", "#2ecc71");
+        updateStatus("【返却モード：待機中】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
       } else if (currentMode === "端末新規登録") {
         actionBtn.innerText = "🔍 新規登録スキャンを開始";
         actionBtn.style.backgroundColor = "#9b59b6";
-        updateStatus("【管理者：端末登録マスター】\n上のボタンを押して新規登録スキャンを開始してください。", "#9b59b6");
+        updateStatus("【管理者：端末登録マスター】\n下のボタンを押して新規登録スキャンを開始してください。", "#9b59b6");
       } else {
         actionBtn.innerText = "🔍 登録解除スキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22";
-        updateStatus("【管理者：端末除籍マスター】\n上のボタンを押して削除するスキャンを開始してください。", "#e67e22");
+        updateStatus("【管理者：端末除籍マスター】\n下のボタンを押して削除するスキャンを開始してください。", "#e67e22");
       }
     }
 
@@ -263,7 +267,7 @@
 
         if (code) {
           const scannedText = code.data.trim();
-          playSound("read"); // ★スキャン成功音
+          playSound("read"); 
           log(`🎯 QR検出成功: [${scannedText}]`);
           
           if (currentMode === "利用者へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
@@ -289,7 +293,7 @@
           if (/^\d{4}$/.test(scannedText)) { 
             fetchUserName(scannedText);
           } else {
-            playSound("error"); // ★エラー音
+            playSound("error"); 
             log(`❌ 判定エラー: [${scannedText}] は4桁の数字ではありません。`);
             updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
@@ -327,7 +331,7 @@
       script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + id + '&callback=' + callbackName;
       script.onerror = function() {
-        playSound("error"); // ★エラー音
+        playSound("error"); 
         savedStudentId = id;
         savedStudentName = "名前取得エラー(未登録の可能性)";
         updateStatus(`👤 利用者ID: [${id}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、上のボタンを押してください。`, "#2c3e50");
@@ -352,7 +356,7 @@
 
       try {
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
-        playSound("success"); // ★成功ジングル
+        playSound("success"); 
         log(`✅ Googleフォームへのデータ送信を完了しました。`);
         
         if (mode === "利用者へ貸出") {
@@ -372,7 +376,7 @@
           resetSystemState();
         }, 3000);
       } catch (e) {
-        playSound("error"); // ★エラー音
+        playSound("error"); 
         log(`❌ 送信エラーが発生しました: ${e.message}`);
         updateStatus("❌ 送信失敗:\n" + e.message, "red");
         setTimeout(() => { resetSystemState(); }, 3000);
@@ -412,13 +416,13 @@
       gain.connect(audioCtx.destination);
 
       if (type === "read") {
-        gain.gain.value = 0.2; // 少し控えめに
+        gain.gain.value = 0.2; 
         osc.frequency.value = 880;
         osc.start();
         gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
         osc.stop(audioCtx.currentTime + 0.1);
       } else if (type === "error") {
-        gain.gain.value = 0.2; // 少し控えめに
+        gain.gain.value = 0.2; 
         [880, 880, 880].forEach((freq, i) => {
           setTimeout(() => {
             const o = audioCtx.createOscillator();
@@ -430,7 +434,7 @@
         });
         gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
       } else if (type === "success") {
-        gain.gain.value = 0.8; // ★ここだけ大きく設定
+        gain.gain.value = 0.8; 
         osc.type = 'sine';
         osc.frequency.setValueAtTime(523, audioCtx.currentTime);
         osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
