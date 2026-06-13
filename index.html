@@ -25,7 +25,7 @@
     /* メッセージ表示エリア（デフォルト：PC用巨大表示） */
     #status { padding: 20px; font-size: 24px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 12px solid #bdc3c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); min-height: 72px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.6; margin-bottom: 15px; box-sizing: border-box; }
 
-    /* メメインレイアウト：PCでは横並び */
+    /* メインレイアウト：PCでは横並び */
     .main-layout { display: flex; gap: 20px; }
     .left-panel { flex: 1.1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .right-panel { flex: 0.9; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -44,7 +44,7 @@
     .btn-group { display: flex; flex-direction: column; gap: 10px; }
     #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.2s; box-sizing: border-box; }
     
-    /* ⌨️ 手入力ボタン用のスタイル */
+    /* 手入力ボタン用のスタイル */
     #manual-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #7f8c8d; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; transition: background-color 0.2s; box-sizing: border-box; }
     #manual-btn:active { background-color: #95a5a6; }
     
@@ -65,7 +65,7 @@
     
     #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
 
-    /* ⌨️ 数字キーパッドモーダル用スタイル設定 */
+    /* 数字キーパッドモーダル用スタイル設定 */
     .keypad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
     .keypad-content { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 320px; text-align: center; box-sizing: border-box; }
     .keypad-display { width: 100%; height: 50px; font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 2px solid #bdc3c7; border-radius: 6px; background: #f8f9fa; line-height: 50px; letter-spacing: 4px; color: #2c3e50; }
@@ -203,12 +203,11 @@
     const overlay = document.getElementById('loading-overlay');
     const scanOverlay = document.getElementById('scan-overlay');
     const actionBtn = document.getElementById('action-btn');
-    const manualBtn = document.getElementById('manual-btn'); // ⌨️ 要素取得
+    const manualBtn = document.getElementById('manual-btn'); 
     const cancelBtn = document.getElementById('cancel-btn');
     const debugConsole = document.getElementById('debug-console');
     const cameraSwitchBtn = document.getElementById('camera-switch-btn');
     
-    // ⌨️ キーパッド関連要素取得
     const keypadModal = document.getElementById('keypad-modal');
     const keypadDisplay = document.getElementById('keypad-display');
     const keypadOk = document.getElementById('keypad-ok');
@@ -222,7 +221,7 @@
     
     let currentFacingMode = "user"; 
     let currentStream = null;
-    let inputBuffer = ""; // ⌨️ 入力された数値を一時保持するバッファ
+    let inputBuffer = ""; 
 
     function log(msg) {
       if (!debugConsole) return;
@@ -304,7 +303,7 @@
       scanOverlay.innerText = "";
       scanOverlay.className = "active";
       actionBtn.disabled = true; 
-      manualBtn.disabled = true; // ⌨️ スキャン中は手入力も無効化
+      manualBtn.disabled = true; 
       
       cancelBtn.style.display = "block";
       
@@ -330,7 +329,6 @@
       tick();
     });
 
-    // ⌨️ 手入力ボタンが押された時の処理
     manualBtn.addEventListener('click', () => {
       inputBuffer = "";
       keypadDisplay.innerText = "";
@@ -339,7 +337,6 @@
       log("⌨️ 利用者IDの手入力パッドを開きました。");
     });
 
-    // ⌨️ キーパッドの数字ボタン押下処理
     window.pressKey = function(key) {
       if (key === 'AC') {
         inputBuffer = "";
@@ -351,24 +348,25 @@
         }
       }
       keypadDisplay.innerText = inputBuffer;
-      // 4桁きっちり入力された時だけ確定ボタンを活性化
       keypadOk.disabled = (inputBuffer.length !== 4);
     };
 
-    // ⌨️ キーパッドのキャンセル
     keypadCancel.addEventListener('click', () => {
       keypadModal.style.display = "none";
       log("⌨️ 手入力がキャンセルされました。");
     });
 
-    // ⌨️ キーパッドの確定
+    // 確定ボタン押下時、確実に文字列（String）に型変換して引き渡す
     keypadOk.addEventListener('click', () => {
       keypadModal.style.display = "none";
-      log(`⌨️ 手入力によりID確定: [${inputBuffer}]`);
       
-      // カメラ読み取り時と共通のデータ処理関数へ引き渡す
+      // 🌟 【修正箇所】バッファの数値を明示的にString型文字列へキャスト
+      const forcedStringId = String(inputBuffer).trim();
+      
+      log(`⌨️ 手入力によりID確定: [${forcedStringId}]`);
+      
       isScanning = false;
-      handleScannedData(inputBuffer);
+      handleScannedData(forcedStringId);
     });
 
     cancelBtn.addEventListener('click', () => {
@@ -391,10 +389,10 @@
       if (currentMode === "利用者へ貸出") {
         actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
-        manualBtn.style.display = "block"; // ⌨️ 貸出の1フェーズ目のみ手入力ボタンを表示
+        manualBtn.style.display = "block"; 
         updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
       } else {
-        manualBtn.style.display = "none"; // ⌨️ 貸出以外では手入力ボタンを隠す
+        manualBtn.style.display = "none"; 
         if (currentMode === "利用者から返却") {
           actionBtn.innerText = "🔍 返却スキャンを開始";
           actionBtn.style.backgroundColor = "#2ecc71";
@@ -449,7 +447,7 @@
     function handleScannedData(scannedText) {
       scanOverlay.innerText = "⏸️ スキャン停止中";
       scanOverlay.className = "";
-      manualBtn.style.display = "none"; // ⌨️ ID確定後は手入力ボタンを非表示にする
+      manualBtn.style.display = "none"; 
 
       if (currentMode === "利用者へ貸出") {
         if (!savedStudentId) {
@@ -484,7 +482,7 @@
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
-        manualBtn.style.display = "none"; // 機体スキャン時は非表示
+        manualBtn.style.display = "none"; 
         cancelBtn.style.display = "block";
         
         delete window[window[callbackName]];
@@ -492,7 +490,7 @@
       };
       
       const script = document.createElement('script');
-      script.id = script.id = callbackName;
+      script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + id + '&callback=' + callbackName;
       script.onerror = function() {
         playSound("error"); 
