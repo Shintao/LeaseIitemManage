@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（タイムアウト機能付き）</title>
+  <title>Chromebook等 貸出管理システム（手入力暴発修正版）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
@@ -199,7 +199,6 @@
     let currentStream = null;
     let inputBuffer = ""; 
     
-    // 🌟【新機能】タイムアウトタイマー管理用変数
     let scanTimeoutTimer = null;
 
     function log(msg) {
@@ -209,7 +208,6 @@
       debugConsole.scrollTop = debugConsole.scrollHeight;
     }
 
-    // 🌟【新機能】タイマーを安全にクリアする関数
     function clearScanTimeout() {
       if (scanTimeoutTimer) {
         clearTimeout(scanTimeoutTimer);
@@ -248,8 +246,8 @@
       if (manualBtn) manualBtn.style.display = "none"; 
       if (cancelBtn) cancelBtn.style.display = "block";
       
-      // 🌟【新機能】スキャン開始と同時に1分（60000ミリ秒）のタイムアウトタイマーを設定
-      clearScanTimeout(); // 念のため既存タイマーをクリア
+      // 🌟【修正】1回目・2回目に関わらず、「ユーザーがボタンを物理的に押した瞬間」にのみ安全に1分タイマーを始動
+      clearScanTimeout();
       scanTimeoutTimer = setTimeout(() => {
         playSound("error");
         log("⚠️ スキャンタイムアウト（1分間操作がなかったため自動リセットしました）");
@@ -297,7 +295,7 @@
 
     if (keypadOk) {
       keypadOk.addEventListener('click', () => {
-        clearScanTimeout(); // 🌟手入力確定時もタイマーを解除
+        clearScanTimeout(); 
         if (keypadModal) keypadModal.style.display = "none";
         const forcedStringId = String(inputBuffer).trim();
         log(`⌨️ 手入力によりID確定: [${forcedStringId}]`);
@@ -307,7 +305,7 @@
     }
 
     cancelBtn.addEventListener('click', () => {
-      clearScanTimeout(); // 🌟手動中断時もタイマーを解除
+      clearScanTimeout(); 
       log("🛑 中断されました。初期状態に戻します。");
       resetSystemState();
       fetchStockInfo(); 
@@ -349,7 +347,7 @@
     }
 
     function resetSystemState() {
-      clearScanTimeout(); // 🌟状態リセット時は確実にタイマーをクリア
+      clearScanTimeout(); 
       isScanning = false;
       savedStudentId = "";
       savedStudentName = "";
@@ -413,7 +411,7 @@
             return;
           }
           
-          clearScanTimeout(); // 🌟QRコード読み取りに成功したためタイマーをクリア
+          clearScanTimeout(); 
           isScanning = false; 
           handleScannedData(scannedText);
           return; 
@@ -463,14 +461,8 @@
         if (manualBtn) manualBtn.style.display = "none"; 
         cancelBtn.style.display = "block";
         
-        // 🌟【重要】2回目のスキャン待ち（機体QR待ち）に突入したため、ここから再び1分の新しいタイムアウトタイマーを開始
+        // 🌟【修正】自動で2回目のタイマーをここでスタートさせるのを廃止（暴発原因を除去）
         clearScanTimeout();
-        scanTimeoutTimer = setTimeout(() => {
-          playSound("error");
-          log("⚠️ 2回目スキャンタイムアウト（端末QRが1分間読み取られなかったため自動リセットしました）");
-          resetSystemState();
-          fetchStockInfo();
-        }, 60000);
 
         delete window[callbackName];
         const targetScript = document.getElementById(callbackName);
@@ -492,14 +484,7 @@
         if (manualBtn) manualBtn.style.display = "none";
         cancelBtn.style.display = "block";
 
-        // エラー時（名前未登録時）も機体QR待ちに入るため、同様に1分のタイマーを開始
         clearScanTimeout();
-        scanTimeoutTimer = setTimeout(() => {
-          playSound("error");
-          log("⚠️ 2回目スキャンタイムアウト（自動リセット）");
-          resetSystemState();
-          fetchStockInfo();
-        }, 60000);
       };
       document.body.appendChild(script);
     }
