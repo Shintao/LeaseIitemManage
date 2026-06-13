@@ -143,6 +143,11 @@
         localStorage.setItem('selectedMode', currentMode); 
         log(`モードが切り替わりました -> ${currentMode}`);
         resetSystemState();
+        
+        // 「利用者へ貸出」または「利用者から返却」の場合のみ自動でスキャンを開始する
+        if (currentMode === "利用者へ貸出" || currentMode === "利用者から返却") {
+          actionBtn.click();
+        }
       });
     });
 
@@ -398,7 +403,7 @@
       document.body.appendChild(script);
     }
 
-function playSound(type) {
+    function playSound(type) {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
