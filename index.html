@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（手入力ボタン制御修正版）</title>
+  <title>Chromebook等 貸出管理システム（タイムアウト機能付き）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
@@ -169,7 +169,6 @@
   <canvas id="canvas" style="display:none;"></canvas>
 
   <script>
-    // ベースコードの構成・変数を完全維持
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
     const ENTRY_MODE = "entry.866648275";
     const ENTRY_DATA1 = "entry.1165154720";
@@ -199,6 +198,9 @@
     let currentFacingMode = "user"; 
     let currentStream = null;
     let inputBuffer = ""; 
+    
+    // 🌟【新機能】タイムアウトタイマー管理用変数
+    let scanTimeoutTimer = null;
 
     function log(msg) {
       if (!debugConsole) return;
@@ -207,7 +209,14 @@
       debugConsole.scrollTop = debugConsole.scrollHeight;
     }
 
-    // テンキー入力処理
+    // 🌟【新機能】タイマーを安全にクリアする関数
+    function clearScanTimeout() {
+      if (scanTimeoutTimer) {
+        clearTimeout(scanTimeoutTimer);
+        scanTimeoutTimer = null;
+      }
+    }
+
     window.pressKey = function(key) {
       if (key === 'AC') {
         inputBuffer = "";
@@ -220,7 +229,6 @@
       if (keypadOk) keypadOk.disabled = (inputBuffer.length !== 4);
     };
 
-    // モード変更ラジオボタン
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         currentMode = e.target.value;
@@ -237,32 +245,39 @@
       if (scanOverlay) { scanOverlay.innerText = ""; scanOverlay.className = "active"; }
       actionBtn.disabled = true; 
       
-      // 🌟【要件変更】スキャンが開始されたら、どのモードであっても「手入力」ボタンは即座に非表示にする
       if (manualBtn) manualBtn.style.display = "none"; 
       if (cancelBtn) cancelBtn.style.display = "block";
       
+      // 🌟【新機能】スキャン開始と同時に1分（60000ミリ秒）のタイムアウトタイマーを設定
+      clearScanTimeout(); // 念のため既存タイマーをクリア
+      scanTimeoutTimer = setTimeout(() => {
+        playSound("error");
+        log("⚠️ スキャンタイムアウト（1分間操作がなかったため自動リセットしました）");
+        resetSystemState();
+        fetchStockInfo();
+      }, 60000); 
+      
       if (currentMode === "利用者へ貸出") {
         if (!savedStudentId) {
-          log("【スキャン開始】利用者IDのQRコードを待機中...");
+          log("【スキャン開始】利用者IDのQRコードを待機中... (1分タイムアウト有効)");
           updateStatus("【利用者IDスキャン中】\n利用者の「4桁数字ID」のQRをカメラにかざしてください。", "#3498db");
         } else {
-          log(`【スキャン開始】端末QRコードを待機中... (${savedStudentName})`);
+          log(`【スキャン開始】端末QRコードを待機中... (${savedStudentName}) (1分タイムアウト有効)`);
           updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
         }
       } else if (currentMode === "利用者から返却") {
-        log("【スキャン開始】返却端末のQRコードを待機中...");
+        log("【スキャン開始】返却端末のQRコードを待機中... (1分タイムアウト有効)");
         updateStatus("【返却スキャン中】\n返却する端末のQRコードをかざしてください。", "#2ecc71");
       } else if (currentMode === "端末新規登録") {
-        log("【スキャン開始】新規登録する端末のQRコードを待機中...");
+        log("【スキャン開始】新規登録する端末のQRコードを待機中... (1分タイムアウト有効)");
         updateStatus("【新規登録スキャン中】\nマスターに登録する端末のQRコードをかざしてください。", "#9b59b6");
       } else {
-        log("【スキャン開始】削除する端末のQRコードを待機中...");
+        log("【スキャン開始】削除する端末のQRコードを待機中... (1分タイムアウト有効)");
         updateStatus("【登録解除スキャン中】\nマスターから除籍する端末のQRコードをかざしてください。", "#e67e22");
       }
       tick();
     });
 
-    // 手入力ボタンの展開
     if (manualBtn) {
       manualBtn.addEventListener('click', () => {
         inputBuffer = "";
@@ -273,7 +288,6 @@
       });
     }
 
-    // 手入力キャンセル
     if (keypadCancel) {
       keypadCancel.addEventListener('click', () => {
         if (keypadModal) keypadModal.style.display = "none";
@@ -281,9 +295,9 @@
       });
     }
 
-    // 手入力確定
     if (keypadOk) {
       keypadOk.addEventListener('click', () => {
+        clearScanTimeout(); // 🌟手入力確定時もタイマーを解除
         if (keypadModal) keypadModal.style.display = "none";
         const forcedStringId = String(inputBuffer).trim();
         log(`⌨️ 手入力によりID確定: [${forcedStringId}]`);
@@ -292,14 +306,13 @@
       });
     }
 
-    // 中断・リセットボタン
     cancelBtn.addEventListener('click', () => {
+      clearScanTimeout(); // 🌟手動中断時もタイマーを解除
       log("🛑 中断されました。初期状態に戻します。");
       resetSystemState();
       fetchStockInfo(); 
     });
 
-    // カメラ切り替えボタン
     if (cameraSwitchBtn) {
       cameraSwitchBtn.addEventListener('click', () => {
         currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
@@ -335,8 +348,8 @@
       });
     }
 
-    // 🌟 システムリセット・待機状態の復元処理（手入力ボタンの出し分け核心部）
     function resetSystemState() {
+      clearScanTimeout(); // 🌟状態リセット時は確実にタイマーをクリア
       isScanning = false;
       savedStudentId = "";
       savedStudentName = "";
@@ -348,13 +361,13 @@
         actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
         
-        // 🌟【要件変更】貸出モードの初期（1回目待機）状態なので、手入力ボタンを表示する
-        if (manualBtn) manualBtn.style.display = "block"; 
-        if (manualBtn) manualBtn.disabled = false;
+        if (manualBtn) {
+          manualBtn.style.display = "block"; 
+          manualBtn.disabled = false;
+        }
         
         updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
       } else {
-        // 🌟 貸出以外のモード（返却・登録・削除）では手入力ボタンは不要なため非表示
         if (manualBtn) manualBtn.style.display = "none"; 
         
         if (currentMode === "利用者から返却") {
@@ -400,6 +413,7 @@
             return;
           }
           
+          clearScanTimeout(); // 🌟QRコード読み取りに成功したためタイマーをクリア
           isScanning = false; 
           handleScannedData(scannedText);
           return; 
@@ -446,10 +460,18 @@
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
         
-        // 🌟【要件変更】2回目（機体QRコード待ち）のターンに突入するため、手入力ボタンを【非表示のまま維持】する
         if (manualBtn) manualBtn.style.display = "none"; 
         cancelBtn.style.display = "block";
         
+        // 🌟【重要】2回目のスキャン待ち（機体QR待ち）に突入したため、ここから再び1分の新しいタイムアウトタイマーを開始
+        clearScanTimeout();
+        scanTimeoutTimer = setTimeout(() => {
+          playSound("error");
+          log("⚠️ 2回目スキャンタイムアウト（端末QRが1分間読み取られなかったため自動リセットしました）");
+          resetSystemState();
+          fetchStockInfo();
+        }, 60000);
+
         delete window[callbackName];
         const targetScript = document.getElementById(callbackName);
         if(targetScript) targetScript.remove();
@@ -467,9 +489,17 @@
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
         
-        // 🌟エラー時も同様に2回目待ち状態のため、手入力は非表示を維持
         if (manualBtn) manualBtn.style.display = "none";
         cancelBtn.style.display = "block";
+
+        // エラー時（名前未登録時）も機体QR待ちに入るため、同様に1分のタイマーを開始
+        clearScanTimeout();
+        scanTimeoutTimer = setTimeout(() => {
+          playSound("error");
+          log("⚠️ 2回目スキャンタイムアウト（自動リセット）");
+          resetSystemState();
+          fetchStockInfo();
+        }, 60000);
       };
       document.body.appendChild(script);
     }
@@ -477,7 +507,7 @@
     async function executeSubmit(mode, data1, data2) {
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       cancelBtn.style.display = "none";
-      if (manualBtn) manualBtn.style.display = "none"; // 送信中も非表示
+      if (manualBtn) manualBtn.style.display = "none"; 
       
       const safeData1 = (data1 === "" || data1 === undefined || data1 === null) ? " " : data1;
       const safeData2 = (data2 === "" || data2 === undefined || data2 === null) ? " " : data2;
@@ -504,7 +534,7 @@
         
         setTimeout(() => {
           fetchStockInfo();
-          resetSystemState(); // 🌟ここで自動リセットされ、貸出なら1回目状態として手入力が再表示されます
+          resetSystemState(); 
         }, 3000);
       } catch (e) {
         playSound("error"); 
@@ -565,7 +595,6 @@
       } catch(e) {}
     }
 
-    // スクリプト最下部での初期起動トリガー（ベースコードと同一の流れ）
     const savedMode = localStorage.getItem('selectedMode');
     if (savedMode) {
       let targetValue = savedMode;
