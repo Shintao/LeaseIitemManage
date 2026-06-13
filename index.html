@@ -9,7 +9,7 @@
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
     .app-container { display: flex; flex-direction: column; max-width: 1200px; margin: 0 auto; padding: 15px; box-sizing: border-box; }
     
-    /* ヘッダーエリア：PCでは横並び */
+    /* ヘッダーエリア */
     .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
     h2 { margin: 0; color: #2c3e50; font-size: 22px; }
     
@@ -22,10 +22,10 @@
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
-    /* メッセージ表示エリア（デフォルト：PC用巨大表示） */
+    /* メッセージ表示エリア */
     #status { padding: 20px; font-size: 24px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 12px solid #bdc3c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); min-height: 72px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.6; margin-bottom: 15px; box-sizing: border-box; }
 
-    /* メインレイアウト：PCでは横並び */
+    /* メインレイアウト */
     .main-layout { display: flex; gap: 20px; }
     .left-panel { flex: 1.1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .right-panel { flex: 0.9; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -44,14 +44,14 @@
     .btn-group { display: flex; flex-direction: column; gap: 10px; }
     #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.2s; box-sizing: border-box; }
     
-    /* 手入力ボタン用のスタイル */
+    /* 手入力ボタン */
     #manual-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #7f8c8d; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; transition: background-color 0.2s; box-sizing: border-box; }
     #manual-btn:active { background-color: #95a5a6; }
     
     #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; box-sizing: border-box; }
     #action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
     
-    /* 右側パーツ */
+    /* 在庫表示・ログパネル */
     .stock-panel { padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stock-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
     .stock-grid { display: flex; justify-content: space-around; gap: 10px; }
@@ -65,7 +65,7 @@
     
     #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
 
-    /* 数字キーパッドモーダル用スタイル設定 */
+    /* モーダル */
     .keypad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
     .keypad-content { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 320px; text-align: center; box-sizing: border-box; }
     .keypad-display { width: 100%; height: 50px; font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 2px solid #bdc3c7; border-radius: 6px; background: #f8f9fa; line-height: 50px; letter-spacing: 4px; color: #2c3e50; }
@@ -80,24 +80,14 @@
     #keypad-ok { background: #2ecc71; color: white; }
     #keypad-ok:disabled { background: #bdc3c7; cursor: not-allowed; }
 
-    /* 📱 スマートフォン向けレスポンシブ設定 (画面幅768px以下) */
     @media (max-width: 768px) {
       .header-area { flex-direction: column; align-items: stretch; text-align: center; }
-      
-      /* ラジオボタンをスマホでも押しやすい2列構成に変更 */
       .mode-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
       .mode-container label { padding: 12px 5px; font-size: 15px; }
-      
-      /* メッセージエリアをスマホサイズに適正化 */
       #status { font-size: 20px; padding: 15px; border-left-width: 8px; min-height: auto; }
-      
-      /* 左右の並びを縦一列に */
       .main-layout { flex-direction: column; gap: 15px; }
       .left-panel, .right-panel { flex: none; width: 100%; }
-      
-      /* スマホではカメラを少しだけ広げて見やすく調整 */
       #video-container { height: 180px; }
-      
       #action-btn { padding: 16px; font-size: 20px; }
       #manual-btn { padding: 14px; font-size: 18px; }
       .stock-count { font-size: 22px; }
@@ -217,7 +207,6 @@
     let currentMode = "利用者へ貸出";
     let savedStudentId = ""; 
     let savedStudentName = ""; 
-    let tickCount = 0;
     
     let currentFacingMode = "user"; 
     let currentStream = null;
@@ -261,8 +250,10 @@
     };
 
     function startCamera(facingMode) {
-      overlay.style.display = "flex";
-      overlay.innerText = "カメラ初期化中...";
+      if (overlay) {
+        overlay.style.display = "flex";
+        overlay.innerText = "カメラ初期化中...";
+      }
       log(`カメラ起動要請中... [向き: ${facingMode === "user" ? "内側" : "外側"}]`);
 
       if (currentStream) {
@@ -276,13 +267,15 @@
       .then(stream => { 
         currentStream = stream;
         video.srcObject = stream; 
-        overlay.style.display = "none"; 
+        if (overlay) overlay.style.display = "none"; 
         log("✅ カメラの起動に成功しました。");
         resetSystemState();
       })
       .catch(err => { 
-        overlay.style.display = "flex";
-        overlay.innerText = "❌ カメラエラー: " + err.message;
+        if (overlay) {
+          overlay.style.display = "flex";
+          overlay.innerText = "❌ カメラエラー: " + err.message;
+        }
         log(`❌ カメラ起動エラー: ${err.message}`);
         updateStatus("カメラが起動できません。権限を確認してください。", "red");
       });
@@ -299,14 +292,14 @@
       if (isScanning) return; 
       
       isScanning = true; 
-      tickCount = 0;
-      scanOverlay.innerText = "";
-      scanOverlay.className = "active";
+      if (scanOverlay) {
+        scanOverlay.innerText = "";
+        scanOverlay.className = "active";
+      }
       actionBtn.disabled = true; 
       
-      // 🌟 スキャンが開始されたら手入力ボタンは完全に非表示にする
-      manualBtn.style.display = "none"; 
-      cancelBtn.style.display = "block";
+      if (manualBtn) manualBtn.style.display = "none"; 
+      if (cancelBtn) cancelBtn.style.display = "block";
       
       if (currentMode === "利用者へ貸出") {
         if (!savedStudentId) {
@@ -330,13 +323,15 @@
       tick();
     });
 
-    manualBtn.addEventListener('click', () => {
-      inputBuffer = "";
-      keypadDisplay.innerText = "";
-      keypadOk.disabled = true;
-      keypadModal.style.display = "flex";
-      log("⌨️ 利用者IDの手入力パッドを開きました。");
-    });
+    if (manualBtn) {
+      manualBtn.addEventListener('click', () => {
+        inputBuffer = "";
+        if (keypadDisplay) keypadDisplay.innerText = "";
+        if (keypadOk) keypadOk.disabled = true;
+        if (keypadModal) keypadModal.style.display = "flex";
+        log("⌨️ 利用者IDの手入力パッドを開きました。");
+      });
+    }
 
     window.pressKey = function(key) {
       if (key === 'AC') {
@@ -348,53 +343,58 @@
           inputBuffer += key;
         }
       }
-      keypadDisplay.innerText = inputBuffer;
-      keypadOk.disabled = (inputBuffer.length !== 4);
+      if (keypadDisplay) keypadDisplay.innerText = inputBuffer;
+      if (keypadOk) keypadOk.disabled = (inputBuffer.length !== 4);
     };
 
-    keypadCancel.addEventListener('click', () => {
-      keypadModal.style.display = "none";
-      log("⌨️ 手入力がキャンセルされました。");
-    });
+    if (keypadCancel) {
+      keypadCancel.addEventListener('click', () => {
+        if (keypadModal) keypadModal.style.display = "none";
+        log("⌨️ 手入力がキャンセルされました。");
+      });
+    }
 
-    keypadOk.addEventListener('click', () => {
-      keypadModal.style.display = "none";
-      const forcedStringId = String(inputBuffer).trim();
-      log(`⌨️ 手入力によりID確定: [${forcedStringId}]`);
-      
-      isScanning = false;
-      handleScannedData(forcedStringId);
-    });
+    if (keypadOk) {
+      keypadOk.addEventListener('click', () => {
+        if (keypadModal) keypadModal.style.display = "none";
+        const forcedStringId = String(inputBuffer).trim();
+        log(`⌨️ 手入力によりID確定: [${forcedStringId}]`);
+        
+        isScanning = false;
+        handleScannedData(forcedStringId);
+      });
+    }
 
-    cancelBtn.addEventListener('click', () => {
-      log("🛑 中断ボタンが押されました。初期状態にリセットします。");
-      resetSystemState();
-      fetchStockInfo(); 
-    });
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        log("🛑 中断ボタンが押されました。初期状態にリセットします。");
+        resetSystemState();
+        fetchStockInfo(); 
+      });
+    }
 
     function resetSystemState() {
       isScanning = false;
       savedStudentId = "";
       savedStudentName = "";
-      scanOverlay.innerText = "⏸️ スキャン停止中";
-      scanOverlay.className = "";
+      if (scanOverlay) {
+        scanOverlay.innerText = "⏸️ スキャン停止中";
+        scanOverlay.className = "";
+      }
       actionBtn.disabled = false;
-      
-      cancelBtn.style.display = "none";
+      if (cancelBtn) cancelBtn.style.display = "none";
       
       if (currentMode === "利用者へ貸出") {
         actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
-        // 🌟 初期状態、またはリセット時は手入力ボタンを復活させる
-        manualBtn.style.display = "block"; 
+        if (manualBtn) manualBtn.style.display = "block"; 
         updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
       } else {
-        // 🌟 貸出以外のモードでは常に非表示
-        manualBtn.style.display = "none"; 
+        if (manualBtn) manualBtn.style.display = "none"; 
         if (currentMode === "利用者から返却") {
           actionBtn.innerText = "🔍 返却スキャンを開始";
           actionBtn.style.backgroundColor = "#2ecc71";
-          updateStatus("【返却モード：待機中}】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
+          updateStatus("【返却モード：待機中】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
         } else if (currentMode === "端末新規登録") {
           actionBtn.innerText = "🔍 新規登録スキャンを開始";
           actionBtn.style.backgroundColor = "#9b59b6";
@@ -408,6 +408,7 @@
     }
 
     function updateStatus(text, color) {
+      if (!statusDiv) return;
       statusDiv.style.borderLeftColor = color;
       statusDiv.style.color = color;
       statusDiv.innerText = text;
@@ -443,10 +444,11 @@
     }
 
     function handleScannedData(scannedText) {
-      scanOverlay.innerText = "⏸️ スキャン停止中";
-      scanOverlay.className = "";
-      // 🌟 データが読み取られたら手入力ボタンは非表示を維持
-      manualBtn.style.display = "none"; 
+      if (scanOverlay) {
+        scanOverlay.innerText = "⏸️ スキャン停止中";
+        scanOverlay.className = "";
+      }
+      if (manualBtn) manualBtn.style.display = "none"; 
 
       if (currentMode === "利用者へ貸出") {
         if (!savedStudentId) {
@@ -483,9 +485,8 @@
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
-        // 🌟 2回目（機体QR読み取り時）は手入力が不要なため非表示を徹底
-        manualBtn.style.display = "none"; 
-        cancelBtn.style.display = "block";
+        if (manualBtn) manualBtn.style.display = "none"; 
+        if (cancelBtn) cancelBtn.style.display = "block";
         
         delete window[window[callbackName]];
         const targetScript = document.getElementById(callbackName);
@@ -503,17 +504,91 @@
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
-        // 🌟 エラー時も機体QR待ちになるため非表示
-        manualBtn.style.display = "none";
+        if (manualBtn) manualBtn.style.display = "none";
       };
       document.body.appendChild(script);
     }
 
     async function executeSubmit(mode, data1, data2) {
       updateStatus("⏳ データを送信中...", "#7f8c8d");
-      cancelBtn.style.display = "none";
+      if (cancelBtn) cancelBtn.style.display = "none";
       
       const safeData1 = (data1 === "" || data1 === undefined || data1 === null) ? " " : data1;
       const safeData2 = (data2 === "" || data2 === undefined || data2 === null) ? " " : data2;
 
       const formData = new FormData();
+      formData.append(ENTRY_MODE, mode === "利用者へ貸出" ? "生徒へ貸出" : mode === "利用者から返却" ? "生徒から返却" : mode);
+      formData.append(ENTRY_DATA1, safeData1);
+      formData.append(ENTRY_DATA2, safeData2);
+
+      try {
+        await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
+        playSound("success"); 
+        log(`✅ Googleフォームへのデータ送信を完了しました。`);
+        
+        if (mode === "利用者へ貸出") {
+          updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
+        } else if (mode.indexOf("返却") !== -1) {
+          updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
+        } else if (mode.indexOf("新規") !== -1 || mode.indexOf("登録") !== -1) {
+          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
+        } else {
+          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
+        }
+        
+        log("⏳ スプレッドシートの同期完了を待っています（3秒間）...");
+        setTimeout(() => {
+          log("🔄 サーバーの更新が完了したため、最新の在庫数を取得します。");
+          fetchStockInfo();
+          resetSystemState();
+        }, 3000);
+      } catch (e) {
+        playSound("error"); 
+        log(`❌ 送信エラーが発生しました: ${e.message}`);
+        updateStatus("❌ 送信失敗:\n" + e.message, "red");
+        setTimeout(() => { resetSystemState(); }, 3000);
+      }
+    }
+
+    function fetchStockInfo() {
+      if (!STOCK_API_URL) return;
+      const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+      window[callbackName] = function(data) {
+        const pcEl = document.getElementById('stock-pc');
+        const batEl = document.getElementById('stock-battery');
+        if(pcEl) pcEl.innerText = data.pc + " 台"; 
+        if(batEl) batEl.innerText = data.battery + " 個";
+        if(pcEl && data.pc <= 2) pcEl.classList.add('low'); else if(pcEl) pcEl.classList.remove('low');
+        if(batEl && data.battery <= 2) batEl.classList.add('low'); else if(batEl) batEl.classList.remove('low');
+        log(`📊 最新在庫に同期しました。[予備:${data.pc}台 / バッテリー:${data.battery}個]`);
+        delete window[window[callbackName]]; 
+        const sScript = document.getElementById(callbackName);
+        if(sScript) sScript.remove();
+      };
+      const script = document.createElement('script'); 
+      script.id = callbackName;
+      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+      script.onerror = function() { 
+        if(document.getElementById('stock-pc')) document.getElementById('stock-pc').innerText = "エラー"; 
+        if(document.getElementById('stock-battery')) document.getElementById('stock-battery').innerText = "エラー"; 
+      };
+      document.body.appendChild(script);
+    }
+
+    function playSound(type) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === "read") {
+          gain.gain.value = 0.2; 
+          osc.frequency.value = 880;
+          osc.start();
+          gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+          osc.stop(audioCtx.currentTime + 0.1);
+        } else if (type === "error") {
+          gain.gain.value = 0.2;
