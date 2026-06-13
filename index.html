@@ -313,7 +313,7 @@
           updateStatus("【利用者IDスキャン中】\n利用者の「4桁数字ID」のQRをカメラにかざしてください。", "#3498db");
         } else {
           log(`【スキャン開始】2回目：端末QRコードを待機中... (利用者: ${savedStudentName} [ID: ${savedStudentId}])`);
-          updateStatus(`【機体QRスキャン中】\n貸し出す機体のQRをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
+          updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
         }
       } else if (currentMode === "利用者から返却") {
         log("【スキャン開始】返却端末のQRコードを待機中...");
@@ -478,7 +478,7 @@
         savedStudentName = data.name;
         log(`✅ 利用者特定: ID [${savedStudentId}] ➔ 名前: [${savedStudentName}]`);
         
-        updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機体のQR】を正面に準備し、下のボタンを押してください。`, "#2c3e50");
+        updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機器のQR】を正面に準備し、下のボタンを押してください。`, "#2c3e50");
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
