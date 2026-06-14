@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（完全防壁版）</title>
+  <title>Chromebook等 貸出管理システム（返却修正版）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
@@ -236,13 +236,11 @@
       });
     });
 
-    // 🌟一本化された安全なメインボタンのクリックイベント
     actionBtn.addEventListener('click', (e) => {
       if (e) e.preventDefault();
       
       if (isScanning) return; 
 
-      // 1回目のスキャン（または手入力後の2回目スキャン移行）
       isScanning = true; 
       if (scanOverlay) { scanOverlay.innerText = ""; scanOverlay.className = "active"; }
       actionBtn.disabled = true; 
@@ -266,12 +264,14 @@
           updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRコードをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
         }
       } else {
-        // 返却・登録などのモード
         if (currentMode === "利用者から返却") {
+          log("【スキャン開始】返却端末のQRコードを待機中...");
           updateStatus("【返却スキャン中】\n返却する端末のQRコードをかざしてください。", "#2ecc71");
         } else if (currentMode === "端末新規登録") {
+          log("【スキャン開始】新規登録端末のQRコードを待機中...");
           updateStatus("【新規登録スキャン中】\nマスターに登録する端末のQRコードをかざしてください。", "#9b59b6");
         } else {
+          log("【スキャン開始】除籍端末のQRコードを待機中...");
           updateStatus("【登録解除スキャン中】\nマスターから除籍する端末のQRコードをかざしてください。", "#e67e22");
         }
       }
@@ -436,7 +436,7 @@
           } else {
             playSound("error"); 
             log(`❌ 判定エラー: [${cleanText}] は4桁の数字ではありません。`);
-            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
+            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり重します。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
@@ -495,19 +495,19 @@
     }
 
     async function executeSubmit(mode, data1, data2) {
-      // 🌟【絶対最強の鉄壁】ここで空欄送信を一瞬の猶予もなく100%射殺する
-      if (mode === "利用者へ貸出") {
+      // 🌟【防壁条件の修正】モード名に「貸出」が含まれている時だけ、空判定のブロックを発動する
+      if (mode.indexOf("貸出") !== -1) {
         if (!data1 || data1.trim() === "" || !data2 || data2.trim() === "") {
-          log("🛑 [防壁作動] 端末データが空欄、またはIDが不正なため、GASへの送信を完全ブロックしました。");
-          // 画面の状態を壊さず、安全に「端末QR待ち（オレンジ）」のままピタッと静止させる
+          log("🛑 [防壁作動] 貸出ですが、IDまたは端末データが空欄のためブロックしました。");
           isScanning = false;
           if (scanOverlay) { scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; }
-          actionBtn.disabled = false; // ボタンをもう一度押せるように解放
-          updateStatus(`⚠️ 端末QRが読み取れていません！\n[対象者: ${savedStudentName}] の機器QRをかざすか、下のボタンを押してスキャンをやり直してください。`, "#e67e22");
-          return; // 💥ここで処理を強制終了。1ミリも下へ行かせない。
+          actionBtn.disabled = false; 
+          updateStatus(`⚠️ 端末QRが読み取れていません！スキャンをやり直してください。`, "#e67e22");
+          return; 
         }
       }
 
+      // 返却等のモード（mode.indexOf("貸出") === -1）の時は、上の防壁を完全にスルーしてここへ来ます
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       cancelBtn.style.display = "none";
       if (manualBtn) manualBtn.style.display = "none"; 
@@ -524,9 +524,9 @@
       try {
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
         playSound("success"); 
-        log(`✅ 送信完了しました。`);
+        log(`✅ 送信完了しました。[モード:${mode} / D1:${safeData1} / D2:${safeData2 || "空欄"}]`);
         
-        if (mode === "利用者へ貸出") {
+        if (mode.indexOf("貸出") !== -1) {
           updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
         } else if (mode.indexOf("返却") !== -1) {
           updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
