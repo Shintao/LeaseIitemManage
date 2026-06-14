@@ -3,50 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（完全先祖返り版）</title>
+  <title>Chromebook等 貸出管理システム（本格運用版）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
     .app-container { display: flex; flex-direction: column; max-width: 1200px; margin: 0 auto; padding: 15px; box-sizing: border-box; }
     
+    /* ヘッダーエリア：PCでは横並び */
     .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
     h2 { margin: 0; color: #2c3e50; font-size: 22px; }
     
+    /* モード選択コンテナ */
     .mode-container { display: flex; gap: 10px; flex-wrap: wrap; }
     .mode-container input { display: none; }
-    .mode-container label { text-align: center; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s; flex: 1; min-width: 80px; white-space: nowrap; user-select: none; }
-    
-    /* 元のモード名表示・判定に完全巻き戻し */
+    .mode-container label { text-align: center; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s; flex: 1; min-width: 80px; white-space: nowrap; }
     input[value="利用者へ貸出"]:checked + label { background-color: #3498db; color: white; border-color: #2980b9; }
     input[value="利用者から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
+    /* メッセージ表示エリア（デフォルト：PC用巨大表示） */
     #status { padding: 20px; font-size: 24px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 12px solid #bdc3c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); min-height: 72px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.6; margin-bottom: 15px; box-sizing: border-box; }
 
+    /* メインレイアウト：PCでは横並び */
     .main-layout { display: flex; gap: 20px; }
     .left-panel { flex: 1.1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .right-panel { flex: 0.9; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     
+    /* カメラコンテナ */
     #video-container { position: relative; width: 100%; height: 220px; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     video { width: 100%; height: 100%; object-fit: contain; display: block; }
     
-    #camera-switch-btn { position: absolute; top: 10px; right: 10px; z-index: 5; background: rgba(0, 0, 0, 0.6); color: white; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+    /* カメラ切り替えボタン */
+    #camera-switch-btn { position: absolute; top: 10px; right: 10px; z-index: 5; background: rgba(0, 0, 0, 0.6); color: white; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.2s; padding: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+    #camera-switch-btn:active { background: rgba(52, 152, 219, 0.9); }
 
     #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; font-weight:bold; z-index: 2; pointer-events: none; }
     #scan-overlay.active { background: rgba(52, 152, 219, 0.15); color: transparent; border: 5px solid #3498db; box-sizing: border-box; }
 
     .btn-group { display: flex; flex-direction: column; gap: 10px; }
-    #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; user-select: none; }
-    #manual-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #7f8c8d; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; box-sizing: border-box; user-select: none; }
-    #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; box-sizing: border-box; user-select: none; }
+    #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.2s; box-sizing: border-box; }
+    
+    /* 手入力ボタン用のスタイル */
+    #manual-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #7f8c8d; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; transition: background-color 0.2s; box-sizing: border-box; }
+    #manual-btn:active { background-color: #95a5a6; }
+    
+    #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: none; box-sizing: border-box; }
     #action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
     
+    /* 右側パーツ */
     .stock-panel { padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stock-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
     .stock-grid { display: flex; justify-content: space-around; gap: 10px; }
     .stock-item { text-align: center; font-size: 14px; flex: 1; }
     .stock-count { font-size: 26px; font-weight: bold; color: #2c3e50; margin-top: 6px; }
+    .stock-count.low { color: #e74c3c; }
 
     .log-panel { display: flex; flex-direction: column; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: 200px; }
     .log-panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
@@ -54,21 +65,43 @@
     
     #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
 
+    /* 数字キーパッドモーダル用スタイル設定 */
     .keypad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
     .keypad-content { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 320px; text-align: center; box-sizing: border-box; }
     .keypad-display { width: 100%; height: 50px; font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 2px solid #bdc3c7; border-radius: 6px; background: #f8f9fa; line-height: 50px; letter-spacing: 4px; color: #2c3e50; }
     .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-    .keypad-btn { background: #ecf0f1; border: none; padding: 15px 0; font-size: 22px; font-weight: bold; border-radius: 8px; cursor: pointer; color: #2c3e50; user-select: none; }
+    .keypad-btn { background: #ecf0f1; border: none; padding: 15px 0; font-size: 22px; font-weight: bold; border-radius: 8px; cursor: pointer; color: #2c3e50; transition: background 0.1s; -webkit-user-select: none; user-select: none; }
+    .keypad-btn:active { background: #bdc3c7; }
+    .keypad-btn.clear { background: #fab1a0; color: #c0392b; }
+    .keypad-btn.clear:active { background: #e17055; }
     .keypad-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .keypad-action-btn { padding: 12px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; user-select: none; }
+    .keypad-action-btn { padding: 12px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
     #keypad-cancel { background: #b2bec3; color: white; }
     #keypad-ok { background: #2ecc71; color: white; }
     #keypad-ok:disabled { background: #bdc3c7; cursor: not-allowed; }
 
+    /* 📱 スマートフォン向けレスポンシブ設定 (画面幅768px以下) */
     @media (max-width: 768px) {
+      .header-area { flex-direction: column; align-items: stretch; text-align: center; }
+      
+      /* ラジオボタンをスマホでも押しやすい2列構成に変更 */
       .mode-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+      .mode-container label { padding: 12px 5px; font-size: 15px; }
+      
+      /* メッセージエリアをスマホサイズに適正化 */
+      #status { font-size: 20px; padding: 15px; border-left-width: 8px; min-height: auto; }
+      
+      /* 左右の並びを縦一列に */
       .main-layout { flex-direction: column; gap: 15px; }
       .left-panel, .right-panel { flex: none; width: 100%; }
+      
+      /* スマホではカメラを少しだけ広げて見やすく調整 */
+      #video-container { height: 180px; }
+      
+      #action-btn { padding: 16px; font-size: 20px; }
+      #manual-btn { padding: 14px; font-size: 18px; }
+      .stock-count { font-size: 22px; }
+      .log-panel { height: 150px; }
     }
   </style>
 </head>
@@ -89,21 +122,21 @@
       </div>
     </div>
 
-    <div id="status">システム初期化中...</div>
+    <div id="status">モードを選択し、ボタンを押して開始してください</div>
 
     <div class="main-layout">
       <div class="left-panel">
         <div id="video-container">
-          <button id="camera-switch-btn" type="button" title="カメラの向きを切り替え">🔄</button>
+          <button id="camera-switch-btn" title="カメラの向きを切り替え">🔄</button>
           <video id="video" autoplay playsinline muted></video>
           <div id="scan-overlay">⏸️ スキャン停止中</div>
-          <div id="loading-overlay">システム準備中...</div>
+          <div id="loading-overlay">カメラ初期化中...</div>
         </div>
 
         <div class="btn-group">
-          <button id="action-btn" type="button">🔍 スキャンを開始する</button>
-          <button id="manual-btn" type="button">⌨️ 利用者IDを手入力する</button>
-          <button id="cancel-btn" type="button">🛑 操作を中断する</button>
+          <button id="action-btn">🔍 スキャンを開始する</button>
+          <button id="manual-btn">⌨️ 利用者IDを手入力する</button>
+          <button id="cancel-btn">🛑 スキャンを中断する</button>
         </div>
       </div>
 
@@ -135,22 +168,22 @@
       <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 18px;">利用者ID(4桁)入力</h3>
       <div id="keypad-display" class="keypad-display"></div>
       <div class="keypad-grid">
-        <button class="keypad-btn" type="button" onclick="window.pressKey('1')">1</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('2')">2</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('3')">3</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('4')">4</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('5')">5</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('6')">6</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('7')">7</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('8')">8</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('9')">9</button>
-        <button class="keypad-btn clear" type="button" onclick="window.pressKey('C')">C</button>
-        <button class="keypad-btn" type="button" onclick="window.pressKey('0')">0</button>
-        <button class="keypad-btn clear" type="button" onclick="window.pressKey('AC')">AC</button>
+        <button class="keypad-btn" onclick="pressKey('1')">1</button>
+        <button class="keypad-btn" onclick="pressKey('2')">2</button>
+        <button class="keypad-btn" onclick="pressKey('3')">3</button>
+        <button class="keypad-btn" onclick="pressKey('4')">4</button>
+        <button class="keypad-btn" onclick="pressKey('5')">5</button>
+        <button class="keypad-btn" onclick="pressKey('6')">6</button>
+        <button class="keypad-btn" onclick="pressKey('7')">7</button>
+        <button class="keypad-btn" onclick="pressKey('8')">8</button>
+        <button class="keypad-btn" onclick="pressKey('9')">9</button>
+        <button class="keypad-btn clear" onclick="pressKey('C')">C</button>
+        <button class="keypad-btn" onclick="pressKey('0')">0</button>
+        <button class="keypad-btn clear" onclick="pressKey('AC')">AC</button>
       </div>
       <div class="keypad-actions">
-        <button id="keypad-cancel" type="button" class="keypad-action-btn">キャンセル</button>
-        <button id="keypad-ok" type="button" class="keypad-action-btn" disabled>確定</button>
+        <button id="keypad-cancel" class="keypad-action-btn">キャンセル</button>
+        <button id="keypad-ok" class="keypad-action-btn" disabled>確定</button>
       </div>
     </div>
   </div>
@@ -181,175 +214,198 @@
     const keypadCancel = document.getElementById('keypad-cancel');
     
     let isScanning = false; 
-    let currentMode = "利用者へ貸出"; // 復元
+    let currentMode = "利用者へ貸出";
     let savedStudentId = ""; 
     let savedStudentName = ""; 
+    let tickCount = 0;
+    
     let currentFacingMode = "user"; 
     let currentStream = null;
     let inputBuffer = ""; 
-    let scanTimeoutTimer = null;
 
     function log(msg) {
       if (!debugConsole) return;
       const now = new Date();
-      debugConsole.innerHTML += `[${now.toLocaleTimeString()}] ${msg}&#13;`;
+      const timeStr = now.toLocaleTimeString();
+      debugConsole.innerHTML += `[${timeStr}] ${msg}&#13;`;
       debugConsole.scrollTop = debugConsole.scrollHeight;
     }
-
-    function clearScanTimeout() {
-      if (scanTimeoutTimer) { clearTimeout(scanTimeoutTimer); scanTimeoutTimer = null; }
-    }
-
-    window.pressKey = function(key) {
-      if (key === 'AC') { inputBuffer = ""; } 
-      else if (key === 'C') { inputBuffer = inputBuffer.slice(0, -1); } 
-      else { if (inputBuffer.length < 4) inputBuffer += key; }
-      if (keypadDisplay) keypadDisplay.innerText = inputBuffer;
-      if (keypadOk) keypadOk.disabled = (inputBuffer.length !== 4);
-    };
 
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         currentMode = e.target.value;
         localStorage.setItem('selectedMode', currentMode); 
-        log(`モード切り替え -> ${currentMode}`);
+        log(`モードが切り替わりました -> ${currentMode}`);
         resetSystemState();
       });
     });
 
-    actionBtn.addEventListener('click', (e) => {
-      if (e) e.preventDefault();
-      if (isScanning) return; 
-
-      isScanning = true; 
-      if (scanOverlay) { scanOverlay.innerText = ""; scanOverlay.className = "active"; }
-      actionBtn.disabled = true; 
-      if (manualBtn) manualBtn.style.display = "none"; 
-      if (cancelBtn) cancelBtn.style.display = "block";
-      
-      clearScanTimeout();
-      scanTimeoutTimer = setTimeout(() => {
-        playSound("error");
-        log("⚠️ スキャンタイムアウト");
-        resetSystemState();
-      }, 60000); 
-
-      if (currentMode === "利用者へ貸出") {
-        if (!savedStudentId) {
-          log("【スキャン開始】利用者IDのQRを待機中...");
-          updateStatus("【利用者IDスキャン中】\n利用者の「4桁数字ID」のQRをかざしてください。", "#3498db");
-        } else {
-          log(`【スキャン開始】端末QR待機中... (対象: ${savedStudentName})`);
-          updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRコードをかざしてください。\n[対象: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
-        }
-      } else {
-        if (currentMode === "利用者から返却") {
-          log("【スキャン開始】返却端末のQRを待機中...");
-          updateStatus("【返却スキャン中】\n返却する端末のQRコードをかざしてください。", "#2ecc71");
-        } else if (currentMode === "端末新規登録") {
-          log("【スキャン開始】新規登録端末のQRを待機中...");
-          updateStatus("【新規登録スキャン中】\n登録する端末のQRコードをかざしてください。", "#9b59b6");
-        } else {
-          log("【スキャン開始】除籍端末のQRを待機中...");
-          updateStatus("【登録解除スキャン中】\n解除する端末のQRコードをかざしてください。", "#e67e22");
-        }
+    window.onload = () => {
+      const savedMode = localStorage.getItem('selectedMode');
+      if (savedMode) {
+        let targetValue = savedMode;
+        if (savedMode === "生徒へ貸出") targetValue = "利用者へ貸出";
+        if (savedMode === "生徒から返却") targetValue = "利用者から返却";
+        
+        const radio = document.querySelector(`input[value="${targetValue}"]`);
+        if (radio) { radio.checked = true; currentMode = targetValue; }
       }
       
-      setTimeout(() => { if (isScanning) tick(); }, 100);
-    });
-
-    if (manualBtn) {
-      manualBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        inputBuffer = "";
-        if (keypadDisplay) keypadDisplay.innerText = "";
-        if (keypadOk) keypadOk.disabled = true;
-        if (keypadModal) keypadModal.style.display = "flex";
-      });
-    }
-
-    if (keypadCancel) {
-      keypadCancel.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (keypadModal) keypadModal.style.display = "none";
-      });
-    }
-
-    if (keypadOk) {
-      keypadOk.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (keypadModal) keypadModal.style.display = "none";
-        const forcedId = String(inputBuffer).trim();
-        isScanning = false;
-        handleScannedData(forcedId);
-      });
-    }
-
-    cancelBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      resetSystemState();
-    });
-
-    if (cameraSwitchBtn) {
-      cameraSwitchBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
-        localStorage.setItem('selectedCameraFacing', currentFacingMode);
-        startCamera(currentFacingMode);
-      });
-    }
+      const savedCamera = localStorage.getItem('selectedCameraFacing');
+      if (savedCamera) {
+        currentFacingMode = savedCamera;
+      }
+      
+      fetchStockInfo();
+      startCamera(currentFacingMode);
+    };
 
     function startCamera(facingMode) {
-      if (overlay) { overlay.style.display = "flex"; overlay.innerText = "カメラ初期化中..."; }
-      if (currentStream) { currentStream.getTracks().forEach(track => track.stop()); }
+      overlay.style.display = "flex";
+      overlay.innerText = "カメラ初期化中...";
+      log(`カメラ起動要請中... [向き: ${facingMode === "user" ? "内側" : "外側"}]`);
 
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode }, audio: false })
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: facingMode }, 
+        audio: false 
+      })
       .then(stream => { 
         currentStream = stream;
-        if (video) video.srcObject = stream; 
-        if (overlay) overlay.style.display = "none";
-        if (scanOverlay && !isScanning) { scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; }
+        video.srcObject = stream; 
+        overlay.style.display = "none"; 
+        log("✅ カメラの起動に成功しました。");
+        resetSystemState();
       })
       .catch(err => { 
-        if (overlay) { overlay.style.display = "flex"; overlay.innerText = "❌ カメラエラー"; }
-        updateStatus("カメラが起動できません。", "red");
+        overlay.style.display = "flex";
+        overlay.innerText = "❌ カメラエラー: " + err.message;
+        log(`❌ カメラ起動エラー: ${err.message}`);
+        updateStatus("カメラが起動できません。権限を確認してください。", "red");
       });
     }
 
+    cameraSwitchBtn.addEventListener('click', () => {
+      currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+      localStorage.setItem('selectedCameraFacing', currentFacingMode);
+      log("🔄 カメラの切り替え要求を受理しました。");
+      startCamera(currentFacingMode);
+    });
+
+    actionBtn.addEventListener('click', () => {
+      if (isScanning) return; 
+      
+      isScanning = true; 
+      tickCount = 0;
+      scanOverlay.innerText = "";
+      scanOverlay.className = "active";
+      actionBtn.disabled = true; 
+      manualBtn.disabled = true; 
+      
+      cancelBtn.style.display = "block";
+      
+      if (currentMode === "利用者へ貸出") {
+        if (!savedStudentId) {
+          log("【スキャン開始】1回目：利用者IDのQRコードを待機中...");
+          updateStatus("【利用者IDスキャン中】\n利用者の「4桁数字ID」のQRをカメラにかざしてください。", "#3498db");
+        } else {
+          log(`【スキャン開始】2回目：端末QRコードを待機中... (利用者: ${savedStudentName} [ID: ${savedStudentId}])`);
+          updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
+        }
+      } else if (currentMode === "利用者から返却") {
+        log("【スキャン開始】返却端末のQRコードを待機中...");
+        updateStatus("【返却スキャン中】\n返却する端末のQRコードをかざしてください。", "#2ecc71");
+      } else if (currentMode === "端末新規登録") {
+        log("【スキャン開始】新規登録する端末のQRコードを待機中...");
+        updateStatus("【新規登録スキャン中】\nマスターに登録する端末のQRコードをかざしてください。", "#9b59b6");
+      } else {
+        log("【スキャン開始】削除する端末のQRコードを待機中...");
+        updateStatus("【登録解除スキャン中】\nマスターから除籍する端末のQRコードをかざしてください。", "#e67e22");
+      }
+
+      tick();
+    });
+
+    manualBtn.addEventListener('click', () => {
+      inputBuffer = "";
+      keypadDisplay.innerText = "";
+      keypadOk.disabled = true;
+      keypadModal.style.display = "flex";
+      log("⌨️ 利用者IDの手入力パッドを開きました。");
+    });
+
+    window.pressKey = function(key) {
+      if (key === 'AC') {
+        inputBuffer = "";
+      } else if (key === 'C') {
+        inputBuffer = inputBuffer.slice(0, -1);
+      } else {
+        if (inputBuffer.length < 4) {
+          inputBuffer += key;
+        }
+      }
+      keypadDisplay.innerText = inputBuffer;
+      keypadOk.disabled = (inputBuffer.length !== 4);
+    };
+
+    keypadCancel.addEventListener('click', () => {
+      keypadModal.style.display = "none";
+      log("⌨️ 手入力がキャンセルされました。");
+    });
+
+    keypadOk.addEventListener('click', () => {
+      keypadModal.style.display = "none";
+      const forcedStringId = String(inputBuffer).trim();
+      log(`⌨️ 手入力によりID確定: [${forcedStringId}]`);
+      
+      isScanning = false;
+      handleScannedData(forcedStringId);
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      log("🛑 中断ボタンが押されました。初期状態にリセットします。");
+      resetSystemState();
+      fetchStockInfo(); 
+    });
+
     function resetSystemState() {
-      clearScanTimeout(); 
       isScanning = false;
       savedStudentId = "";
       savedStudentName = "";
-      if (scanOverlay) { scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; }
+      scanOverlay.innerText = "⏸️ スキャン停止中";
+      scanOverlay.className = "";
       actionBtn.disabled = false;
+      manualBtn.disabled = false;
+      
       cancelBtn.style.display = "none";
       
       if (currentMode === "利用者へ貸出") {
         actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
-        if (manualBtn) { manualBtn.style.display = "block"; manualBtn.disabled = false; }
-        updateStatus("【貸出モード：待機中】\n「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
+        manualBtn.style.display = "block"; 
+        updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
       } else {
-        if (manualBtn) manualBtn.style.display = "none"; 
+        manualBtn.style.display = "none"; 
         if (currentMode === "利用者から返却") {
           actionBtn.innerText = "🔍 返却スキャンを開始";
           actionBtn.style.backgroundColor = "#2ecc71";
-          updateStatus("【返却モード：待機中】\n「返却スキャンを開始」を押してください。", "#2ecc71");
+          updateStatus("【返却モード：待機中}】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
         } else if (currentMode === "端末新規登録") {
           actionBtn.innerText = "🔍 新規登録スキャンを開始";
           actionBtn.style.backgroundColor = "#9b59b6";
-          updateStatus("【管理者：端末登録マスター】\n新規登録スキャンを開始してください。", "#9b59b6");
+          updateStatus("【管理者：端末登録マスター】\n下のボタンを押して新規登録スキャンを開始してください。", "#9b59b6");
         } else {
           actionBtn.innerText = "🔍 登録解除スキャンを開始";
           actionBtn.style.backgroundColor = "#e67e22";
-          updateStatus("【管理者：端末除籍マスター】\n削除するスキャンを開始してください。", "#e67e22");
+          updateStatus("【管理者：端末除籍マスター】\n下のボタンを押して削除するスキャンを開始してください。", "#e67e22");
         }
       }
     }
 
     function updateStatus(text, color) {
-      if (!statusDiv) return;
       statusDiv.style.borderLeftColor = color;
       statusDiv.style.color = color;
       statusDiv.innerText = text;
@@ -357,7 +413,8 @@
 
     function tick() {
       if (!isScanning) return; 
-      if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
         const context = canvas.getContext('2d');
         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -366,9 +423,15 @@
 
         if (code) {
           const scannedText = code.data.trim();
-          if (!scannedText) { requestAnimationFrame(tick); return; }
           playSound("read"); 
-          clearScanTimeout(); 
+          log(`🎯 QR検出成功: [${scannedText}]`);
+          
+          if (currentMode === "利用者へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
+            log("残像検知: 1回目の利用者IDがまだ映っているためスルーします");
+            requestAnimationFrame(tick);
+            return;
+          }
+          
           isScanning = false; 
           handleScannedData(scannedText);
           return; 
@@ -378,99 +441,109 @@
     }
 
     function handleScannedData(scannedText) {
-      if (scanOverlay) { scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; }
-      const cleanText = scannedText.trim();
+      scanOverlay.innerText = "⏸️ スキャン停止中";
+      scanOverlay.className = "";
+      manualBtn.style.display = "none"; 
 
       if (currentMode === "利用者へ貸出") {
         if (!savedStudentId) {
-          if (/^\d{4}$/.test(cleanText)) { 
-            fetchUserName(cleanText);
+          if (/^\d{4}$/.test(scannedText)) { 
+            fetchUserName(scannedText);
           } else {
             playSound("error"); 
-            updateStatus("❌ エラー: 4桁の数字ではありません。", "red");
+            log(`❌ 判定エラー: [${scannedText}] は4桁の数字ではありません。`);
+            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
-          executeSubmit(currentMode, savedStudentId, cleanText);
+          log(`🚀 送信準備: 利用者 [${savedStudentName} (${savedStudentId})] ➔ 端末 [${scannedText}]`);
+          executeSubmit(currentMode, savedStudentId, scannedText);
         }
       } else {
-        executeSubmit(currentMode, cleanText, "");
+        log(`🚀 送信準備: モード [${currentMode}] ➔ 端末 [${scannedText}]`);
+        executeSubmit(currentMode, scannedText, "");
       }
     }
 
+    // 🌟 修正箇所：手入力・QRのどちらから来ても100%確実にGAS側が処理できるようにパラメータの渡し方を徹底強化
     function fetchUserName(id) {
       updateStatus("🔍 利用者マスターを照会中...", "#7f8c8d");
+      
+      // パラメータを強固にクリーニング＆文字列エンコード化
+      const cleanId = encodeURIComponent(String(id).toUpperCase().trim());
       const callbackName = 'jsonp_name_' + Math.round(100000 * Math.random());
       
       window[callbackName] = function(data) {
-        savedStudentId = String(id).trim(); 
+        savedStudentId = String(id).trim(); // 元のIDを保持
         savedStudentName = data.name;
-        updateStatus(`👤 利用者: ${savedStudentName} さん\n貸し出す【機器のQR】を準備し、下のボタンを押してください。`, "#2c3e50");
+        log(`✅ 利用者特定: ID [${savedStudentId}] ➔ 名前: [${savedStudentName}]`);
+        
+        updateStatus(`👤 利用者: ${savedStudentName} さんをロックしました。\n貸し出す【機器のQR】を正面に準備し、下のボタンを押してください。`, "#2c3e50");
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
         actionBtn.style.backgroundColor = "#e67e22"; 
         actionBtn.disabled = false;
+        manualBtn.style.display = "none"; 
         cancelBtn.style.display = "block";
-        delete window[callbackName];
-        const t = document.getElementById(callbackName); if(t) t.remove();
+        
+        delete window[window[callbackName]];
+        const targetScript = document.getElementById(callbackName);
+        if(targetScript) targetScript.remove();
       };
       
       const script = document.createElement('script');
       script.id = callbackName;
-      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + id + '&callback=' + callbackName;
+      // 強制クリーニングしたcleanIdを投げる
+      script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=getName&id=' + cleanId + '&callback=' + callbackName;
       script.onerror = function() {
-        savedStudentId = String(id).trim(); savedStudentName = "未登録ユーザー";
-        updateStatus(`👤 利用者ID: [${savedStudentId}] をロック。\n機器QRを準備し、スキャンを開始してください。`, "#2c3e50");
+        playSound("error"); 
+        savedStudentId = String(id).trim();
+        savedStudentName = "名前取得エラー(未登録の可能性)";
+        updateStatus(`👤 利用者ID: [${savedStudentId}] をロックしました（名前取得失敗）。\nそのまま貸し出す場合は、下のボタンを押してください。`, "#2c3e50");
         actionBtn.innerText = "🔍 端末QRのスキャンを開始";
-        actionBtn.style.backgroundColor = "#e67e22"; actionBtn.disabled = false;
-        cancelBtn.style.display = "block";
-        delete window[callbackName];
-        const t = document.getElementById(callbackName); if(t) t.remove();
+        actionBtn.style.backgroundColor = "#e67e22"; 
+        actionBtn.disabled = false;
+        manualBtn.style.display = "none";
       };
       document.body.appendChild(script);
     }
 
     async function executeSubmit(mode, data1, data2) {
-      // 🌟【最重要・防壁の完全撤去】返却時は一切の妨害をしない
-      if (mode === "利用者へ貸出") {
-        if (!data1 || !data2 || data2.trim() === "") {
-          updateStatus(`⚠️ スキャンをやり直してください。`, "#e67e22");
-          resetSystemState();
-          return; 
-        }
-      }
-
       updateStatus("⏳ データを送信中...", "#7f8c8d");
-      actionBtn.disabled = true;
-      if (manualBtn) manualBtn.style.display = "none";
       cancelBtn.style.display = "none";
+      
+      const safeData1 = (data1 === "" || data1 === undefined || data1 === null) ? " " : data1;
+      const safeData2 = (data2 === "" || data2 === undefined || data2 === null) ? " " : data2;
 
       const formData = new FormData();
-      
-      // 🌟【元々の正しいGAS向け文字列変換】に完全巻き戻し
-      const sendMode = (mode === "利用者へ貸出") ? "生徒へ貸出" : (mode === "利用者から返却") ? "生徒から返却" : mode;
-      formData.append(ENTRY_MODE, sendMode);
-      formData.append(ENTRY_DATA1, data1);
-      
-      // 🌟 返却時はdata2を絶対に付与しない（元々動いていたあの頃の形）
-      if (mode === "利用者へ貸出") {
-        formData.append(ENTRY_DATA2, data2);
-      }
+      formData.append(ENTRY_MODE, mode === "利用者へ貸出" ? "生徒へ貸出" : mode === "利用者から返却" ? "生徒から返却" : mode);
+      formData.append(ENTRY_DATA1, safeData1);
+      formData.append(ENTRY_DATA2, safeData2);
 
       try {
         await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
         playSound("success"); 
-        log(`✅ 送信成功: [${sendMode}] D1:${data1}`);
+        log(`✅ Googleフォームへのデータ送信を完了しました。`);
         
         if (mode === "利用者へ貸出") {
-          updateStatus(`✅ 貸出完了！\n${savedStudentName} さんへ 端末 [${data2}] を登録しました。`, "#3498db");
+          updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
+        } else if (mode.indexOf("返却") !== -1) {
+          updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
+        } else if (mode.indexOf("新規") !== -1 || mode.indexOf("登録") !== -1) {
+          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
         } else {
-          updateStatus(`✅ 返却・処理完了！`, "#2ecc71");
+          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
         }
         
-        setTimeout(() => { fetchStockInfo(); resetSystemState(); }, 2000);
+        log("⏳ スプレッドシートの同期完了を待っています（3秒間）...");
+        setTimeout(() => {
+          log("🔄 サーバーの更新が完了したため、最新の在庫数を取得します。");
+          fetchStockInfo();
+          resetSystemState();
+        }, 3000);
       } catch (e) {
         playSound("error"); 
-        updateStatus("❌ 送信失敗", "red");
+        log(`❌ 送信エラーが発生しました: ${e.message}`);
+        updateStatus("❌ 送信失敗:\n" + e.message, "red");
         setTimeout(() => { resetSystemState(); }, 3000);
       }
     }
@@ -479,34 +552,64 @@
       if (!STOCK_API_URL) return;
       const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
       window[callbackName] = function(data) {
-        if(document.getElementById('stock-pc')) document.getElementById('stock-pc').innerText = data.pc + " 台"; 
-        if(document.getElementById('stock-battery')) document.getElementById('stock-battery').innerText = data.battery + " 個";
-        delete window[callbackName]; const s = document.getElementById(callbackName); if(s) s.remove();
+        const pcEl = document.getElementById('stock-pc');
+        const batEl = document.getElementById('stock-battery');
+        if(pcEl) pcEl.innerText = data.pc + " 台"; 
+        if(batEl) batEl.innerText = data.battery + " 個";
+        if(pcEl && data.pc <= 2) pcEl.classList.add('low'); else if(pcEl) pcEl.classList.remove('low');
+        if(batEl && data.battery <= 2) batEl.classList.add('low'); else if(batEl) batEl.classList.remove('low');
+        log(`📊 最新在庫に同期しました。[予備:${data.pc}台 / バッテリー:${data.battery}個]`);
+        delete window[window[callbackName]]; 
+        const sScript = document.getElementById(callbackName);
+        if(sScript) sScript.remove();
       };
-      const script = document.createElement('script'); script.id = callbackName;
+      const script = document.createElement('script'); 
+      script.id = callbackName;
       script.src = STOCK_API_URL + (STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+      script.onerror = function() { 
+        if(document.getElementById('stock-pc')) document.getElementById('stock-pc').innerText = "エラー"; 
+        if(document.getElementById('stock-battery')) document.getElementById('stock-battery').innerText = "エラー"; 
+      };
       document.body.appendChild(script);
     }
 
     function playSound(type) {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        if (type === "read") { gain.gain.value = 0.2; osc.frequency.value = 880; osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
-        else if (type === "success") { gain.gain.value = 0.6; osc.frequency.setValueAtTime(523, audioCtx.currentTime); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
-      } catch(e) {}
-    }
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
 
-    const savedMode = localStorage.getItem('selectedMode');
-    if (savedMode) {
-      const radio = document.querySelector(`input[value="${savedMode}"]`);
-      if (radio) { radio.checked = true; currentMode = savedMode; }
+      if (type === "read") {
+        gain.gain.value = 0.2; 
+        osc.frequency.value = 880;
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+        osc.stop(audioCtx.currentTime + 0.1);
+      } else if (type === "error") {
+        gain.gain.value = 0.2; 
+        [880, 880, 880].forEach((freq, i) => {
+          setTimeout(() => {
+            const o = audioCtx.createOscillator();
+            o.connect(gain);
+            o.frequency.value = freq;
+            o.start();
+            o.stop(audioCtx.currentTime + 0.1);
+          }, i * 150);
+        });
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+      } else if (type === "success") {
+        gain.gain.value = 0.8; 
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
+        osc.frequency.setValueAtTime(783, audioCtx.currentTime + 0.4);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1.0);
+        osc.stop(audioCtx.currentTime + 1.0);
+      }
     }
-    
-    fetchStockInfo();
-    resetSystemState();
-    startCamera(currentFacingMode);
   </script>
 </body>
 </html>
