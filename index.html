@@ -3,20 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム</title>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <title>貸出管理システム</title>
   <style>
-    body { font-family: sans-serif; background: #f4f6f9; padding: 15px; }
+    body { font-family: sans-serif; background: #f4f6f9; padding: 20px; }
     #status { padding: 20px; background: #fff; border-left: 10px solid #ccc; margin-bottom: 20px; font-weight: bold; }
-    #video { width: 100%; max-width: 400px; background: #000; display: block; margin: 0 auto; }
-    #action-btn { width: 100%; padding: 20px; font-size: 18px; margin-top: 10px; }
+    .input-group { margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <h2>貸出管理システム</h2>
-  <div id="status">カメラ起動中...</div>
-  <video id="video" autoplay playsinline muted></video>
-  <button id="action-btn">スキャン開始</button>
+  <h2>貸出管理システム（テスト環境）</h2>
+  <div id="status">待機中</div>
+  
+  <div class="input-group">
+    モード: 
+    <select id="mode">
+      <option value="貸出">利用者へ貸出</option>
+      <option value="返却">利用者から返却</option>
+    </select>
+  </div>
+  <div class="input-group">データ1（生徒ID等）: <input type="text" id="data1" value="1234"></div>
+  <div class="input-group">データ2（端末ID）: <input type="text" id="data2" value="R7HC0001"></div>
+  <button id="action-btn" style="padding: 10px;">送信して確認する</button>
 
   <script>
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
@@ -25,7 +32,6 @@
     const ENTRY_DATA2 = "entry.1094519910";
     const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxGmBTg8T4quolzCtotdF3j_V0iWTpd7O2wvbsZ0i3saM3pAPekDj98npUVaGCqe2oMFQ/exec";
 
-    // バリデーション付き送信処理
     async function executeSubmit(mode, data1, data2) {
       document.getElementById('status').innerText = "⏳ 確認中...";
       
@@ -40,7 +46,6 @@
 
       if (result.status === "error") {
         document.getElementById('status').innerText = "❌ " + result.message;
-        setTimeout(() => location.reload(), 3000);
         return;
       }
 
@@ -55,14 +60,11 @@
       });
     }
 
-    // カメラ起動処理
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => { document.getElementById('video').srcObject = stream; document.getElementById('status').innerText = "準備完了"; })
-      .catch(err => { document.getElementById('status').innerText = "カメラエラー: " + err.message; });
-      
     document.getElementById('action-btn').onclick = () => {
-      // ここにテスト用の呼び出し例
-      executeSubmit("利用者へ貸出", "1234", "R7HC0001");
+      const mode = document.getElementById('mode').value;
+      const data1 = document.getElementById('data1').value;
+      const data2 = document.getElementById('data2').value;
+      executeSubmit(mode, data1, data2);
     };
   </script>
 </body>
