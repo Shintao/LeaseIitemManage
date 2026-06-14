@@ -3,28 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>貸出管理システム</title>
+  <title>Chromebook等 貸出管理システム（全量統合版）</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: sans-serif; background: #f4f6f9; padding: 20px; }
-    #status { padding: 20px; background: #fff; border-left: 10px solid #ccc; margin-bottom: 20px; font-weight: bold; }
-    .input-group { margin-bottom: 10px; }
+    html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
+    .app-container { display: flex; flex-direction: column; max-width: 1200px; margin: 0 auto; padding: 15px; box-sizing: border-box; }
+    .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+    h2 { margin: 0; color: #2c3e50; font-size: 22px; }
+    .mode-container { display: flex; gap: 10px; flex-wrap: wrap; }
+    .mode-container input { display: none; }
+    .mode-container label { text-align: center; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s; flex: 1; min-width: 80px; white-space: nowrap; }
+    input[value="利用者へ貸出"]:checked + label { background-color: #3498db; color: white; border-color: #2980b9; }
+    input[value="利用者から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
+    input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
+    input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
+    #status { padding: 20px; font-size: 24px; font-weight: bold; border-radius: 8px; background-color: #fff; border-left: 12px solid #bdc3c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); min-height: 72px; display: flex; align-items: center; white-space: pre-wrap; line-height: 1.6; margin-bottom: 15px; box-sizing: border-box; }
+    .main-layout { display: flex; gap: 20px; }
+    .left-panel { flex: 1.1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .right-panel { flex: 0.9; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    #video-container { position: relative; width: 100%; height: 220px; background-color: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    video { width: 100%; height: 100%; object-fit: contain; display: block; }
+    #camera-switch-btn { position: absolute; top: 10px; right: 10px; z-index: 5; background: rgba(0, 0, 0, 0.6); color: white; border: 2px solid white; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+    #scan-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; font-weight:bold; z-index: 2; pointer-events: none; }
+    #scan-overlay.active { background: rgba(52, 152, 219, 0.15); color: transparent; border: 5px solid #3498db; box-sizing: border-box; }
+    .btn-group { display: flex; flex-direction: column; gap: 10px; }
+    #action-btn { width: 100%; padding: 18px; font-size: 22px; font-weight: bold; color: white; background-color: #2c3e50; border: none; border-radius: 8px; cursor: pointer; }
+    #manual-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #7f8c8d; border: none; border-radius: 8px; cursor: pointer; display: none; }
+    #cancel-btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; color: white; background-color: #e74c3c; border: none; border-radius: 8px; cursor: pointer; display: none; }
+    #action-btn:disabled { background-color: #bdc3c7; }
+    .stock-panel { padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .stock-panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
+    .stock-grid { display: flex; justify-content: space-around; gap: 10px; }
+    .stock-item { text-align: center; font-size: 14px; flex: 1; }
+    .stock-count { font-size: 26px; font-weight: bold; color: #2c3e50; margin-top: 6px; }
+    .log-panel { display: flex; flex-direction: column; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: 200px; }
+    .log-panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #7f8c8d; border-bottom: 1px solid #ecf0f1; padding-bottom: 4px; }
+    #debug-console { flex: 1; background: #222; color: #00ff00; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 5px; overflow-y: auto; white-space: pre-wrap; }
+    #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
+    .keypad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+    .keypad-content { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 320px; text-align: center; }
+    .keypad-display { width: 100%; height: 50px; font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 2px solid #bdc3c7; border-radius: 6px; background: #f8f9fa; line-height: 50px; color: #2c3e50; }
+    .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+    .keypad-btn { background: #ecf0f1; border: none; padding: 15px 0; font-size: 22px; font-weight: bold; border-radius: 8px; cursor: pointer; color: #2c3e50; }
+    .keypad-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .keypad-action-btn { padding: 12px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
+    #keypad-cancel { background: #b2bec3; color: white; }
+    #keypad-ok { background: #2ecc71; color: white; }
+    #keypad-ok:disabled { background: #bdc3c7; }
   </style>
 </head>
 <body>
-  <h2>貸出管理システム（テスト環境）</h2>
-  <div id="status">待機中</div>
-  
-  <div class="input-group">
-    モード: 
-    <select id="mode">
-      <option value="貸出">利用者へ貸出</option>
-      <option value="返却">利用者から返却</option>
-    </select>
+  <div class="app-container">
+    <div class="header-area">
+      <h2>Chromebook等 貸出管理システム</h2>
+      <div class="mode-container">
+        <input type="radio" id="m-rent" name="mode" value="利用者へ貸出" checked>
+        <label for="m-rent">📤 貸出</label>
+        <input type="radio" id="m-return" name="mode" value="利用者から返却">
+        <label for="m-return">📥 返却</label>
+        <input type="radio" id="m-add" name="mode" value="端末新規登録">
+        <label for="m-add">➕ 登録</label>
+        <input type="radio" id="m-del" name="mode" value="端末登録解除">
+        <label for="m-del">❌ 解除</label>
+      </div>
+    </div>
+    <div id="status">モードを選択し、ボタンを押して開始してください</div>
+    <div class="main-layout">
+      <div class="left-panel">
+        <div id="video-container">
+          <button id="camera-switch-btn">🔄</button>
+          <video id="video" autoplay playsinline muted></video>
+          <div id="scan-overlay">⏸️ スキャン停止中</div>
+          <div id="loading-overlay">カメラ初期化中...</div>
+        </div>
+        <div class="btn-group">
+          <button id="action-btn">🔍 スキャンを開始する</button>
+          <button id="manual-btn">⌨️ 利用者IDを手入力する</button>
+          <button id="cancel-btn">🛑 スキャンを中断する</button>
+        </div>
+      </div>
+      <div class="right-panel">
+        <div class="stock-panel">
+          <h3>現在の貸出可能在庫</h3>
+          <div class="stock-grid">
+            <div class="stock-item"><div>💻 予備機</div><div class="stock-count" id="stock-pc">---</div></div>
+            <div class="stock-item"><div>🔋 バッテリー</div><div class="stock-count" id="stock-battery">---</div></div>
+          </div>
+        </div>
+        <div class="log-panel">
+          <h3>🚨 システム内部動作ログ</h3>
+          <div id="debug-console">--- 運用ログ開始 ---&#13;</div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="input-group">データ1（生徒ID等）: <input type="text" id="data1" value="1234"></div>
-  <div class="input-group">データ2（端末ID）: <input type="text" id="data2" value="R7HC0001"></div>
-  <button id="action-btn" style="padding: 10px;">送信して確認する</button>
-
+  <div id="keypad-modal" class="keypad-modal">
+    <div class="keypad-content">
+      <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 18px;">利用者ID(4桁)入力</h3>
+      <div id="keypad-display" class="keypad-display"></div>
+      <div class="keypad-grid">
+        <button class="keypad-btn" onclick="pressKey('1')">1</button><button class="keypad-btn" onclick="pressKey('2')">2</button><button class="keypad-btn" onclick="pressKey('3')">3</button>
+        <button class="keypad-btn" onclick="pressKey('4')">4</button><button class="keypad-btn" onclick="pressKey('5')">5</button><button class="keypad-btn" onclick="pressKey('6')">6</button>
+        <button class="keypad-btn" onclick="pressKey('7')">7</button><button class="keypad-btn" onclick="pressKey('8')">8</button><button class="keypad-btn" onclick="pressKey('9')">9</button>
+        <button class="keypad-btn" onclick="pressKey('C')">C</button><button class="keypad-btn" onclick="pressKey('0')">0</button><button class="keypad-btn" onclick="pressKey('AC')">AC</button>
+      </div>
+      <div class="keypad-actions">
+        <button id="keypad-cancel" class="keypad-action-btn">キャンセル</button>
+        <button id="keypad-ok" class="keypad-action-btn" disabled>確定</button>
+      </div>
+    </div>
+  </div>
+  <canvas id="canvas" style="display:none;"></canvas>
   <script>
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
     const ENTRY_MODE = "entry.866648275";
@@ -32,40 +121,56 @@
     const ENTRY_DATA2 = "entry.1094519910";
     const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxGmBTg8T4quolzCtotdF3j_V0iWTpd7O2wvbsZ0i3saM3pAPekDj98npUVaGCqe2oMFQ/exec";
 
+    const video = document.getElementById('video'), canvas = document.getElementById('canvas'), statusDiv = document.getElementById('status'), overlay = document.getElementById('loading-overlay'), scanOverlay = document.getElementById('scan-overlay'), actionBtn = document.getElementById('action-btn'), manualBtn = document.getElementById('manual-btn'), cancelBtn = document.getElementById('cancel-btn'), debugConsole = document.getElementById('debug-console'), cameraSwitchBtn = document.getElementById('camera-switch-btn'), keypadModal = document.getElementById('keypad-modal'), keypadDisplay = document.getElementById('keypad-display'), keypadOk = document.getElementById('keypad-ok'), keypadCancel = document.getElementById('keypad-cancel');
+    let isScanning = false, currentMode = "利用者へ貸出", savedStudentId = "", savedStudentName = "", currentFacingMode = "user", currentStream = null, inputBuffer = "";
+
+    function log(msg) { const now = new Date(); debugConsole.innerHTML += `[${now.toLocaleTimeString()}] ${msg}&#13;`; debugConsole.scrollTop = debugConsole.scrollHeight; }
+    function updateStatus(text, color) { statusDiv.style.borderLeftColor = color; statusDiv.style.color = color; statusDiv.innerText = text; }
+
     async function executeSubmit(mode, data1, data2) {
-      document.getElementById('status').innerText = "⏳ 確認中...";
-      
-      const checkUrl = `${STOCK_API_URL}${STOCK_API_URL.includes('?') ? '&' : '?'}action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;
-      
-      const result = await new Promise(resolve => {
-        window.jsonp_check = resolve;
-        const script = document.createElement('script');
-        script.src = checkUrl;
-        document.body.appendChild(script);
-      });
-
-      if (result.status === "error") {
-        document.getElementById('status').innerText = "❌ " + result.message;
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append(ENTRY_MODE, mode);
-      formData.append(ENTRY_DATA1, data1);
-      formData.append(ENTRY_DATA2, data2);
-      
-      fetch(FORM_URL, { method: 'POST', body: formData, mode: 'no-cors' }).then(() => {
-        document.getElementById('status').innerText = "✅ 完了しました";
-        setTimeout(() => location.reload(), 2000);
-      });
+      updateStatus("⏳ 確認中...", "#7f8c8d");
+      cancelBtn.style.display = "none";
+      const checkUrl = `${STOCK_API_URL}${STOCK_API_URL.indexOf('?') >= 0 ? '&' : '?'}action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;
+      const validation = await new Promise(resolve => { window.jsonp_check = resolve; const s = document.createElement('script'); s.src = checkUrl; s.onerror = () => resolve({status: "ok"}); document.body.appendChild(s); });
+      if (validation.status === "error") { playSound("error"); updateStatus("❌ " + validation.message, "red"); setTimeout(resetSystemState, 3000); return; }
+      const fd = new FormData(); fd.append(ENTRY_MODE, mode); fd.append(ENTRY_DATA1, data1 || " "); fd.append(ENTRY_DATA2, data2 || " ");
+      try { await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: fd }); playSound("success"); updateStatus("✅ 完了しました", "#2ecc71"); setTimeout(() => { fetchStockInfo(); resetSystemState(); }, 2000); } catch(e) { updateStatus("❌ 送信失敗", "red"); setTimeout(resetSystemState, 3000); }
     }
 
-    document.getElementById('action-btn').onclick = () => {
-      const mode = document.getElementById('mode').value;
-      const data1 = document.getElementById('data1').value;
-      const data2 = document.getElementById('data2').value;
-      executeSubmit(mode, data1, data2);
-    };
+    function startCamera(f) {
+      if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: f } }).then(s => { currentStream = s; video.srcObject = s; overlay.style.display = "none"; resetSystemState(); }).catch(e => { overlay.innerText = "❌ カメラ不可"; });
+    }
+
+    function resetSystemState() { isScanning = false; savedStudentId = ""; scanOverlay.innerText = "⏸️ スキャン停止中"; scanOverlay.className = ""; actionBtn.disabled = false; manualBtn.style.display = (currentMode === "利用者へ貸出") ? "block" : "none"; cancelBtn.style.display = "none"; updateStatus("待機中...", "#bdc3c7"); }
+
+    document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', (e) => { currentMode = e.target.value; resetSystemState(); }));
+    actionBtn.addEventListener('click', () => { isScanning = true; actionBtn.disabled = true; scanOverlay.className = "active"; cancelBtn.style.display = "block"; tick(); });
+    cameraSwitchBtn.addEventListener('click', () => { currentFacingMode = (currentFacingMode === "user") ? "environment" : "user"; startCamera(currentFacingMode); });
+    
+    function tick() {
+      if (!isScanning) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        const ctx = canvas.getContext('2d'); canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const code = jsQR(ctx.getImageData(0,0,canvas.width, canvas.height).data, canvas.width, canvas.height);
+        if (code) { isScanning = false; handleScannedData(code.data.trim()); return; }
+      }
+      requestAnimationFrame(tick);
+    }
+    
+    function handleScannedData(d) {
+      if (currentMode === "利用者へ貸出" && !savedStudentId) { fetchUserName(d); } 
+      else { executeSubmit(currentMode, (currentMode === "利用者へ貸出" ? savedStudentId : d), (currentMode === "利用者へ貸出" ? d : "")); }
+    }
+
+    function fetchUserName(id) {
+      const cb = 'n' + Date.now(); window[cb] = (d) => { savedStudentId = id; savedStudentName = d.name; updateStatus("👤 利用者特定: " + d.name + "\n端末QRを読み取ってください", "#3498db"); isScanning = true; tick(); };
+      const s = document.createElement('script'); s.src = STOCK_API_URL + '?action=getName&id=' + id + '&callback=' + cb; document.body.appendChild(s);
+    }
+
+    function fetchStockInfo() { const cb = 's' + Date.now(); window[cb] = (d) => { document.getElementById('stock-pc').innerText = d.pc + " 台"; }; const s = document.createElement('script'); s.src = STOCK_API_URL + '?action=getStock&callback=' + cb; document.body.appendChild(s); }
+    function playSound(t) { const ctx = new (window.AudioContext || window.webkitAudioContext)(), o = ctx.createOscillator(); o.connect(ctx.destination); o.frequency.value = (t === "success" ? 523 : 220); o.start(); o.stop(ctx.currentTime + 0.1); }
+    window.onload = () => { startCamera(currentFacingMode); fetchStockInfo(); };
   </script>
 </body>
 </html>
