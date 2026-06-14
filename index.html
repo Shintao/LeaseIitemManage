@@ -507,46 +507,49 @@
       document.body.appendChild(script);
     }
 
-    async function executeSubmit(mode, data1, data2) {
-      updateStatus("⏳ データを送信中...", "#7f8c8d");
-      cancelBtn.style.display = "none";
+async function executeSubmit(mode, data1, data2) {
+  updateStatus("⏳ 貸出状況を確認中...", "#7f8c8d");
+  cancelBtn.style.display = "none";
+
+  // --- 新規追加：バリデーションチェック ---
+  const checkUrl = `${STOCK_API_URL}?action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;
+  
+  try {
+    const checkResult = await new Promise((resolve) => {
+      window.jsonp_check = (res) => resolve(res);
+      const script = document.createElement('script');
+      script.src = checkUrl;
+      document.body.appendChild(script);
+    });
+
+    if (checkResult.status === "error") {
+      playSound("error");
+      updateStatus("❌ エラー: " + checkResult.message, "red");
       
-      const safeData1 = (data1 === "" || data1 === undefined || data1 === null) ? " " : data1;
-      const safeData2 = (data2 === "" || data2 === undefined || data2 === null) ? " " : data2;
-
-      const formData = new FormData();
-      formData.append(ENTRY_MODE, mode === "利用者へ貸出" ? "生徒へ貸出" : mode === "利用者から返却" ? "生徒から返却" : mode);
-      formData.append(ENTRY_DATA1, safeData1);
-      formData.append(ENTRY_DATA2, safeData2);
-
-      try {
-        await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
-        playSound("success"); 
-        log(`✅ Googleフォームへのデータ送信を完了しました。`);
-        
-        if (mode === "利用者へ貸出") {
-          updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
-        } else if (mode.indexOf("返却") !== -1) {
-          updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
-        } else if (mode.indexOf("新規") !== -1 || mode.indexOf("登録") !== -1) {
-          updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
+      // 失敗時の挙動
+      setTimeout(() => {
+        if (mode === "利用者へ貸出" && checkResult.message.includes("貸出中")) {
+          // 貸出中の場合：利用者IDを保持したまま、端末QRスキャン前（ボタン再活性化）に戻る
+          updateStatus(`👤 利用者: ${savedStudentName} さん (${savedStudentId}) をロック中。\n別の【機器のQR】を再度スキャンしてください。`, "#e67e22");
+          actionBtn.disabled = false;
+          isScanning = false;
         } else {
-          updateStatus(`✅ 登録解除完了！\n端末 [${data1}] を除籍しました。`, "#e67e22");
-        }
-        
-        log("⏳ スプレッドシートの同期完了を待っています（3秒間）...");
-        setTimeout(() => {
-          log("🔄 サーバーの更新が完了したため、最新の在庫数を取得します。");
-          fetchStockInfo();
+          // その他のエラー：初期状態へ戻す
           resetSystemState();
-        }, 3000);
-      } catch (e) {
-        playSound("error"); 
-        log(`❌ 送信エラーが発生しました: ${e.message}`);
-        updateStatus("❌ 送信失敗:\n" + e.message, "red");
-        setTimeout(() => { resetSystemState(); }, 3000);
-      }
+        }
+      }, 3000);
+      return; 
     }
+  } catch (e) {
+    updateStatus("❌ 確認中にエラーが発生しました", "red");
+    return;
+  }
+  // -------------------------------------
+
+  // 以下、既存のフォーム送信処理へ進む
+  const formData = new FormData();
+  // ... (以下、元の送信コードをそのまま記述)
+}
 
     function fetchStockInfo() {
       if (!STOCK_API_URL) return;
