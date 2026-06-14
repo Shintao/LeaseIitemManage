@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（返却修正版）</title>
+  <title>Chromebook等 貸出管理システム（データ連携修正版）</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     html, body { min-height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; }
@@ -15,8 +15,10 @@
     .mode-container { display: flex; gap: 10px; flex-wrap: wrap; }
     .mode-container input { display: none; }
     .mode-container label { text-align: center; padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: 2px solid #bdc3c7; border-radius: 8px; background-color: #fff; transition: all 0.2s; flex: 1; min-width: 80px; white-space: nowrap; user-select: none; }
-    input[value="利用者へ貸出"]:checked + label { background-color: #3498db; color: white; border-color: #2980b9; }
-    input[value="利用者から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
+    
+    /* value値をGAS送信値（生徒へ貸出／生徒から返却）に完全統一 */
+    input[value="生徒へ貸出"]:checked + label { background-color: #3498db; color: white; border-color: #2980b9; }
+    input[value="生徒から返却"]:checked + label { background-color: #2ecc71; color: white; border-color: #27ae60; }
     input[value="端末新規登録"]:checked + label { background-color: #9b59b6; color: white; border-color: #8e44ad; }
     input[value="端末登録解除"]:checked + label { background-color: #e67e22; color: white; border-color: #d35400; }
     
@@ -53,7 +55,6 @@
     
     #loading-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#fff; display:flex; justify-content:center; align-items:center; font-size:16px; z-index: 10; }
 
-    /* テンキーモーダル用スタイル */
     .keypad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
     .keypad-content { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 320px; text-align: center; box-sizing: border-box; }
     .keypad-display { width: 100%; height: 50px; font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 2px solid #bdc3c7; border-radius: 6px; background: #f8f9fa; line-height: 50px; letter-spacing: 4px; color: #2c3e50; }
@@ -89,9 +90,9 @@
     <div class="header-area">
       <h2>Chromebook等 貸出管理システム</h2>
       <div class="mode-container">
-        <input type="radio" id="m-rent" name="mode" value="利用者へ貸出" checked>
+        <input type="radio" id="m-rent" name="mode" value="生徒へ貸出" checked>
         <label for="m-rent">📤 貸出</label>
-        <input type="radio" id="m-return" name="mode" value="利用者から返却">
+        <input type="radio" id="m-return" name="mode" value="生徒から返却">
         <label for="m-return">📥 返却</label>
         <input type="radio" id="m-add" name="mode" value="端末新規登録">
         <label for="m-add">➕ 登録</label>
@@ -192,7 +193,7 @@
     const keypadCancel = document.getElementById('keypad-cancel');
     
     let isScanning = false; 
-    let currentMode = "利用者へ貸出";
+    let currentMode = "生徒へ貸出"; // 統一
     let savedStudentId = ""; 
     let savedStudentName = ""; 
     let currentFacingMode = "user"; 
@@ -238,7 +239,6 @@
 
     actionBtn.addEventListener('click', (e) => {
       if (e) e.preventDefault();
-      
       if (isScanning) return; 
 
       isScanning = true; 
@@ -255,7 +255,7 @@
         fetchStockInfo();
       }, 60000); 
 
-      if (currentMode === "利用者へ貸出") {
+      if (currentMode === "生徒へ貸出") {
         if (!savedStudentId) {
           log("【スキャン開始】利用者IDのQRコードを待機中...");
           updateStatus("【利用者IDスキャン中】\n利用者の「4桁数字ID」のQRをカメラにかざしてください。", "#3498db");
@@ -264,7 +264,7 @@
           updateStatus(`【機器QRスキャン中】\n貸し出す機器のQRコードをかざしてください。\n[対象者: ${savedStudentName} (${savedStudentId})]`, "#e67e22");
         }
       } else {
-        if (currentMode === "利用者から返却") {
+        if (currentMode === "生徒から返却") {
           log("【スキャン開始】返却端末のQRコードを待機中...");
           updateStatus("【返却スキャン中】\n返却する端末のQRコードをかざしてください。", "#2ecc71");
         } else if (currentMode === "端末新規登録") {
@@ -363,14 +363,14 @@
       actionBtn.disabled = false;
       cancelBtn.style.display = "none";
       
-      if (currentMode === "利用者へ貸出") {
+      if (currentMode === "生徒へ貸出") {
         actionBtn.innerText = "🔍 利用者IDのスキャンを開始";
         actionBtn.style.backgroundColor = "#3498db";
         if (manualBtn) { manualBtn.style.display = "block"; manualBtn.disabled = false; }
         updateStatus("【貸出モード：待機中】\n下の「利用者IDのスキャンを開始」または「手入力」を押してください。", "#3498db");
       } else {
         if (manualBtn) manualBtn.style.display = "none"; 
-        if (currentMode === "利用者から返却") {
+        if (currentMode === "生徒から返却") {
           actionBtn.innerText = "🔍 返却スキャンを開始";
           actionBtn.style.backgroundColor = "#2ecc71";
           updateStatus("【返却モード：待機中】\n下の「返却スキャンを開始」を押してください。", "#2ecc71");
@@ -410,7 +410,7 @@
           playSound("read"); 
           log(`🎯 QR検出成功: [${scannedText}]`);
           
-          if (currentMode === "利用者へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
+          if (currentMode === "生徒へ貸出" && savedStudentId !== "" && scannedText === savedStudentId) {
             requestAnimationFrame(tick);
             return;
           }
@@ -429,14 +429,14 @@
       if (!scannedText || scannedText.trim() === "") return;
       const cleanText = scannedText.trim();
 
-      if (currentMode === "利用者へ貸出") {
+      if (currentMode === "生徒へ貸出") {
         if (!savedStudentId) {
           if (/^\d{4}$/.test(cleanText)) { 
             fetchUserName(cleanText);
           } else {
             playSound("error"); 
             log(`❌ 判定エラー: [${cleanText}] は4桁の数字ではありません。`);
-            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり重します。", "red");
+            updateStatus("❌ エラー: 利用者の4桁数字IDではありません。やり直します。", "red");
             setTimeout(() => { resetSystemState(); }, 2500);
           }
         } else {
@@ -495,8 +495,8 @@
     }
 
     async function executeSubmit(mode, data1, data2) {
-      // 🌟【防壁条件の修正】モード名に「貸出」が含まれている時だけ、空判定のブロックを発動する
-      if (mode.indexOf("貸出") !== -1) {
+      // 🌟防壁の判定条件を「生徒へ貸出」に完全固定
+      if (mode === "生徒へ貸出") {
         if (!data1 || data1.trim() === "" || !data2 || data2.trim() === "") {
           log("🛑 [防壁作動] 貸出ですが、IDまたは端末データが空欄のためブロックしました。");
           isScanning = false;
@@ -507,7 +507,6 @@
         }
       }
 
-      // 返却等のモード（mode.indexOf("貸出") === -1）の時は、上の防壁を完全にスルーしてここへ来ます
       updateStatus("⏳ データを送信中...", "#7f8c8d");
       cancelBtn.style.display = "none";
       if (manualBtn) manualBtn.style.display = "none"; 
@@ -517,7 +516,7 @@
       const safeData2 = data2;
 
       const formData = new FormData();
-      formData.append(ENTRY_MODE, mode === "利用者へ貸出" ? "生徒へ貸出" : mode === "利用者から返却" ? "生徒から返却" : mode);
+      formData.append(ENTRY_MODE, mode); // 変換を廃止し、value（生徒へ貸出／生徒から返却）をそのまま送信
       formData.append(ENTRY_DATA1, safeData1);
       formData.append(ENTRY_DATA2, safeData2);
 
@@ -526,9 +525,9 @@
         playSound("success"); 
         log(`✅ 送信完了しました。[モード:${mode} / D1:${safeData1} / D2:${safeData2 || "空欄"}]`);
         
-        if (mode.indexOf("貸出") !== -1) {
+        if (mode === "生徒へ貸出") {
           updateStatus(`✅ 貸出完了！\n${savedStudentName} さん (${data1}) へ 端末 [${data2}] を登録しました。`, "#2ecc71");
-        } else if (mode.indexOf("返却") !== -1) {
+        } else if (mode === "生徒から返却") {
           updateStatus(`✅ 返却完了！\n端末 [${data1}] をフリーに戻しました。`, "#2ecc71");
         } else if (mode.indexOf("新規") !== -1 || mode.indexOf("登録") !== -1) {
           updateStatus(`✅ 新規登録完了！\n端末 [${data1}] をマスターに追加。`, "#9b59b6");
@@ -599,13 +598,11 @@
       } catch(e) {}
     }
 
+    // 記憶からの復元処理を完全にシンプル化
     const savedMode = localStorage.getItem('selectedMode');
     if (savedMode) {
-      let targetValue = savedMode;
-      if (savedMode === "生徒へ貸出") targetValue = "利用者へ貸出";
-      if (savedMode === "生徒から返却") targetValue = "利用者から返却";
-      const radio = document.querySelector(`input[value="${targetValue}"]`);
-      if (radio) { radio.checked = true; currentMode = targetValue; }
+      const radio = document.querySelector(`input[value="${savedMode}"]`);
+      if (radio) { radio.checked = true; currentMode = savedMode; }
     }
     const savedCamera = localStorage.getItem('selectedCameraFacing');
     if (savedCamera) currentFacingMode = savedCamera;
