@@ -3,10 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chromebook等 貸出管理システム（本格運用版）</title>
+  <title>Chromebook等 貸出管理システム</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  </head>
+  <style>
+    body { font-family: sans-serif; background: #f4f6f9; padding: 15px; }
+    #status { padding: 20px; background: #fff; border-left: 10px solid #ccc; margin-bottom: 20px; font-weight: bold; }
+    #video { width: 100%; max-width: 400px; background: #000; display: block; margin: 0 auto; }
+    #action-btn { width: 100%; padding: 20px; font-size: 18px; margin-top: 10px; }
+  </style>
+</head>
 <body>
+  <h2>貸出管理システム</h2>
+  <div id="status">カメラ起動中...</div>
+  <video id="video" autoplay playsinline muted></video>
+  <button id="action-btn">スキャン開始</button>
+
   <script>
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
     const ENTRY_MODE = "entry.866648275";
@@ -14,9 +25,9 @@
     const ENTRY_DATA2 = "entry.1094519910";
     const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxGmBTg8T4quolzCtotdF3j_V0iWTpd7O2wvbsZ0i3saM3pAPekDj98npUVaGCqe2oMFQ/exec";
 
-    // executeSubmitを統合したバリデーション対応版
+    // バリデーション付き送信処理
     async function executeSubmit(mode, data1, data2) {
-      updateStatus("⏳ 確認中...", "#7f8c8d");
+      document.getElementById('status').innerText = "⏳ 確認中...";
       
       const checkUrl = `${STOCK_API_URL}${STOCK_API_URL.includes('?') ? '&' : '?'}action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;
       
@@ -28,9 +39,8 @@
       });
 
       if (result.status === "error") {
-        updateStatus("❌ " + result.message, "red");
-        playSound("error");
-        setTimeout(resetSystemState, 3000);
+        document.getElementById('status').innerText = "❌ " + result.message;
+        setTimeout(() => location.reload(), 3000);
         return;
       }
 
@@ -40,12 +50,20 @@
       formData.append(ENTRY_DATA2, data2);
       
       fetch(FORM_URL, { method: 'POST', body: formData, mode: 'no-cors' }).then(() => {
-        playSound("success");
-        updateStatus("✅ 処理が完了しました", "#2ecc71");
-        setTimeout(resetSystemState, 2000);
+        document.getElementById('status').innerText = "✅ 完了しました";
+        setTimeout(() => location.reload(), 2000);
       });
     }
-    // ...その他以前の関数定義（tick, startCamera等）をここに記述...
+
+    // カメラ起動処理
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => { document.getElementById('video').srcObject = stream; document.getElementById('status').innerText = "準備完了"; })
+      .catch(err => { document.getElementById('status').innerText = "カメラエラー: " + err.message; });
+      
+    document.getElementById('action-btn').onclick = () => {
+      // ここにテスト用の呼び出し例
+      executeSubmit("利用者へ貸出", "1234", "R7HC0001");
+    };
   </script>
 </body>
 </html>
