@@ -512,8 +512,7 @@ async function executeSubmit(mode, data1, data2) {
   cancelBtn.style.display = "none";
 
   // --- 新規追加：バリデーションチェック ---
-  const checkUrl = `${STOCK_API_URL}?action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;
-  
+  const checkUrl = `${STOCK_API_URL}?action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;  
   try {
     const checkResult = await new Promise((resolve) => {
       window.jsonp_check = (res) => resolve(res);
