@@ -511,44 +511,24 @@ async function executeSubmit(mode, data1, data2) {
   updateStatus("⏳ 貸出状況を確認中...", "#7f8c8d");
   cancelBtn.style.display = "none";
 
-  // --- 新規追加：バリデーションチェック ---
-  const checkUrl = `${STOCK_API_URL}?action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;  
-  try {
-    const checkResult = await new Promise((resolve) => {
-      window.jsonp_check = (res) => resolve(res);
-      const script = document.createElement('script');
-      script.src = checkUrl;
-      document.body.appendChild(script);
-    });
+  // コールバック関数を window 直下に確実に定義
+  window.jsonp_check = (res) => {
+    // スクリプトタグを削除してクリーンアップ
+    const s = document.getElementById('check-script');
+    if(s) s.remove();
+    // 解決（成功）
+    window.resolveCheck(res);
+  };
 
-    if (checkResult.status === "error") {
-      playSound("error");
-      updateStatus("❌ エラー: " + checkResult.message, "red");
-      
-      // 失敗時の挙動
-      setTimeout(() => {
-        if (mode === "利用者へ貸出" && checkResult.message.includes("貸出中")) {
-          // 貸出中の場合：利用者IDを保持したまま、端末QRスキャン前（ボタン再活性化）に戻る
-          updateStatus(`👤 利用者: ${savedStudentName} さん (${savedStudentId}) をロック中。\n別の【機器のQR】を再度スキャンしてください。`, "#e67e22");
-          actionBtn.disabled = false;
-          isScanning = false;
-        } else {
-          // その他のエラー：初期状態へ戻す
-          resetSystemState();
-        }
-      }, 3000);
-      return; 
-    }
-  } catch (e) {
-    updateStatus("❌ 確認中にエラーが発生しました", "red");
-    return;
-  }
-  // -------------------------------------
-
-  // 以下、既存のフォーム送信処理へ進む
-  const formData = new FormData();
-  // ... (以下、元の送信コードをそのまま記述)
-}
+  const checkUrl = `${STOCK_API_URL}${STOCK_API_URL.includes('?') ? '&' : '?'}action=checkStatus&mode=${encodeURIComponent(mode)}&id1=${encodeURIComponent(data1)}&id2=${encodeURIComponent(data2)}&callback=jsonp_check`;
+  
+  const checkResult = await new Promise((resolve) => {
+    window.resolveCheck = resolve; // 解決用関数を一時保存
+    const script = document.createElement('script');
+    script.id = 'check-script';
+    script.src = checkUrl;
+    document.body.appendChild(script);
+  });
 
     function fetchStockInfo() {
       if (!STOCK_API_URL) return;
