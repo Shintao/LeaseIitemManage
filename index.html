@@ -1,103 +1,107 @@
 <!DOCTYPE html>
 <html lang="ja">
-<script>
-  // ... (定数定義はそのまま) ...
-  let isScanning = false;
-  let currentMode = "利用者へ貸出";
-  let savedStudentId = "";
-  let savedStudentName = "";
-  let scanTimeoutTimer = null; // タイムアウト用タイマーを追加
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chromebook等 貸出管理システム（修正版）</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <style>
+    /* CSSは前回提示のものを使用してください（省略） */
+  </style>
+</head>
+<body>
+  <script>
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdWhiNc9YuYfA61ONMIBHAx9MhegFJRCIdCwVWyorLlXO4Xgw/formResponse";
+    const ENTRY_MODE = "entry.866648275";
+    const ENTRY_DATA1 = "entry.1165154720";
+    const ENTRY_DATA2 = "entry.1094519910";
+    const STOCK_API_URL = "https://script.google.com/a/macros/city.hamamatsu-szo.ed.jp/s/AKfycbxGmBTg8T4quolzCtotdF3j_V0iWTpd7O2wvbsZ0i3saM3pAPekDj98npUVaGCqe2oMFQ/exec"; 
 
-  // 1分間タイマーの設定と解除
-  function startScanTimeout() {
-    clearScanTimeout();
-    scanTimeoutTimer = setTimeout(() => {
-      if (isScanning) {
-        log("⚠️ スキャンタイムアウト");
-        playSound("error");
-        updateStatus("時間切れです。もう一度スキャンを開始してください。", "red");
-        resetSystemState();
+    // --- 変数定義 ---
+    let isScanning = false; 
+    let currentMode = "利用者へ貸出";
+    let savedStudentId = ""; 
+    let savedStudentName = ""; 
+    let scanTimeoutTimer = null; // タイムアウト用
+
+    // --- タイムアウト管理 ---
+    function startScanTimeout() {
+      clearScanTimeout();
+      scanTimeoutTimer = setTimeout(() => {
+        if (isScanning) {
+          log("⚠️ タイムアウト: スキャンを中断しました");
+          playSound("error");
+          updateStatus("60秒経過したため、自動的にリセットしました。", "red");
+          resetSystemState();
+        }
+      }, 60000);
+    }
+
+    function clearScanTimeout() {
+      if (scanTimeoutTimer) {
+        clearTimeout(scanTimeoutTimer);
+        scanTimeoutTimer = null;
       }
-    }, 60000); // 60秒
-  }
-
-  function clearScanTimeout() {
-    if (scanTimeoutTimer) {
-      clearTimeout(scanTimeoutTimer);
-      scanTimeoutTimer = null;
-    }
-  }
-
-  // スキャン開始時の処理を強化
-  actionBtn.addEventListener('click', () => {
-    if (isScanning) return;
-    isScanning = true;
-    scanOverlay.className = "active";
-    actionBtn.disabled = true;
-    manualBtn.disabled = true;
-    cancelBtn.style.display = "block";
-    
-    startScanTimeout(); // ★ここで1分タイマー発動
-    tick();
-  });
-
-  // 送信処理（返却時はdata2を空にせず、そもそもappendしない形へ）
-  async function executeSubmit(mode, data1, data2) {
-    clearScanTimeout(); // 通信中はタイマーを止める
-    updateStatus("⏳ データを送信中...", "#7f8c8d");
-    
-    const formData = new FormData();
-    const sendMode = (mode === "利用者へ貸出") ? "生徒へ貸出" : (mode === "利用者から返却") ? "生徒から返却" : mode;
-    
-    formData.append(ENTRY_MODE, sendMode);
-    formData.append(ENTRY_DATA1, data1 || " ");
-    
-    // 🌟 返却時はdata2を付与しない（元々の正常動作ロジックに忠実）
-    if (mode === "利用者へ貸出" && data2) {
-      formData.append(ENTRY_DATA2, data2);
     }
 
-    try {
-      await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
-      playSound("success");
-      updateStatus("✅ 送信完了しました。", "#2ecc71");
+    // --- 送信処理 (返却対応) ---
+    async function executeSubmit(mode, data1, data2) {
+      clearScanTimeout(); // 送信開始時にタイマーを止める
+      updateStatus("⏳ データを送信中...", "#7f8c8d");
       
-      // 送信成功後にのみリセット
-      setTimeout(() => {
-        fetchStockInfo();
-        resetSystemState();
-      }, 2000);
-    } catch (e) {
-      playSound("error");
-      updateStatus("❌ 送信失敗", "red");
-      setTimeout(() => resetSystemState(), 3000);
-    }
-  }
+      const formData = new FormData();
+      // 返却時は ENTRY_DATA2 を送らないロジック
+      formData.append(ENTRY_MODE, mode === "利用者へ貸出" ? "生徒へ貸出" : mode === "利用者から返却" ? "生徒から返却" : mode);
+      formData.append(ENTRY_DATA1, data1 || " ");
+      
+      // 貸出時のみ ENTRY_DATA2 を付与
+      if (mode === "利用者へ貸出" && data2) {
+        formData.append(ENTRY_DATA2, data2);
+      }
 
-  // 既存のresetSystemStateにタイマー解除を追加
-  function resetSystemState() {
-    isScanning = false;
-    clearScanTimeout(); // ★必須：リセット時は必ずタイマーを消す
-    savedStudentId = "";
-    savedStudentName = "";
-    // ...以降の描画処理はそのまま...
-    actionBtn.disabled = false;
-    manualBtn.disabled = false;
-    cancelBtn.style.display = "none";
-    // (以下、各モードのUI反映...)
-  }
-
-  // tick関数内でも同様に
-  function tick() {
-    if (!isScanning) return;
-    // ...QR読み取りロジック...
-    if (code) {
-      clearScanTimeout(); // ★読み取った瞬間にタイマー解除
-      isScanning = false;
-      handleScannedData(code.data.trim());
-      return;
+      try {
+        await fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
+        playSound("success");
+        updateStatus("✅ 処理が完了しました。", "#2ecc71");
+        
+        // 成功後にリセット
+        setTimeout(() => {
+          fetchStockInfo();
+          resetSystemState();
+        }, 2000);
+      } catch (e) {
+        playSound("error");
+        updateStatus("❌ 送信失敗", "red");
+        setTimeout(() => resetSystemState(), 3000);
+      }
     }
-    requestAnimationFrame(tick);
-  }
-  // ... (その他、既存の関数) ...
-</script>
+
+    // --- スキャンループ ---
+    function tick() {
+      if (!isScanning) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        // ... (画像解析処理) ...
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          clearScanTimeout(); // 読み取ったらタイマー停止
+          isScanning = false;
+          handleScannedData(code.data.trim());
+          return;
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // --- その他関数 ---
+    // (これまでの関数を維持しつつ、ボタンイベントに startScanTimeout() を追加してください)
+    actionBtn.addEventListener('click', () => {
+      isScanning = true;
+      startScanTimeout(); // ここでスタート
+      tick();
+      // ... 他のUI更新処理 ...
+    });
+
+    // ... (resetSystemState 内で clearScanTimeout() を呼ぶのを忘れないでください) ...
+  </script>
+</body>
+</html>
